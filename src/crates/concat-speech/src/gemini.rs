@@ -23,17 +23,31 @@ pub const DEFAULT_GEMINI_KEYS: &[&str] = &[
 /// The default Gemini model used for Kurdish transcription & translation.
 pub const DEFAULT_GEMINI_MODEL: &str = "gemini-2.5-flash";
 
-/// Supported transcription languages for Kurdish AI.
+/// Supported transcription languages for AI transcription.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum KurdishLanguage {
-    /// Central Kurdish / Sorani dialect (ckb)
+    /// Automatic language detection (any spoken language)
     #[default]
-    CentralKurdish,
-    /// Iraqi Arabic dialect (ar-IQ)
-    IraqiArabic,
-    /// Automatic language detection
     Auto,
+    /// Central Kurdish / Sorani dialect (ckb)
+    CentralKurdish,
+    /// Arabic (including Iraqi Arabic and dialects)
+    Arabic,
+    /// English
+    English,
+    /// Persian (Farsi)
+    Persian,
+    /// Turkish
+    Turkish,
+    /// German
+    German,
+    /// French
+    French,
+    /// Spanish
+    Spanish,
+    /// Iraqi Arabic dialect (ar-IQ) - preserved for backward compatibility
+    IraqiArabic,
 }
 
 impl KurdishLanguage {
@@ -41,13 +55,31 @@ impl KurdishLanguage {
     pub fn prompt_instruction(self) -> &'static str {
         match self {
             KurdishLanguage::Auto => {
-                "Transcribe this audio/video. Auto-detect the language being spoken (either Central Kurdish/Sorani Kurdish or Iraqi Arabic) and transcribe in that language. Use proper script and vocabulary for the detected language."
-            }
-            KurdishLanguage::IraqiArabic => {
-                "Transcribe this audio/video to Iraqi Arabic (Arabic dialect spoken in Iraq). Use proper Arabic script and Iraqi dialect vocabulary."
+                "Transcribe this audio/video accurately. Auto-detect the language being spoken (e.g. Kurdish, Arabic, English, Persian, Turkish, German, French, Spanish, etc.) and transcribe in that detected language using its native alphabet and spelling."
             }
             KurdishLanguage::CentralKurdish => {
-                "Transcribe this audio/video to Central Kurdish (Sorani Kurdish, language code: ckb)."
+                "Transcribe this audio/video to Central Kurdish (Sorani Kurdish, language code: ckb). Use proper Kurdish script and letters: ئ، ە، ڕ، ڵ، ڤ، ۆ، ێ، ی، و."
+            }
+            KurdishLanguage::Arabic | KurdishLanguage::IraqiArabic => {
+                "Transcribe this audio/video to Arabic (including Iraqi, Levantine, Gulf, Egyptian, or Modern Standard Arabic). Use proper Arabic script."
+            }
+            KurdishLanguage::English => {
+                "Transcribe this audio/video in English. Maintain proper punctuation and capitalization."
+            }
+            KurdishLanguage::Persian => {
+                "Transcribe this audio/video in Persian (Farsi). Use proper Persian script with letters: گ، چ، پ، ژ."
+            }
+            KurdishLanguage::Turkish => {
+                "Transcribe this audio/video in Turkish. Use proper Turkish alphabet: ç, ğ, ı, ö, ş, ü."
+            }
+            KurdishLanguage::German => {
+                "Transcribe this audio/video in German. Maintain proper German orthography."
+            }
+            KurdishLanguage::French => {
+                "Transcribe this audio/video in French. Maintain proper accents and punctuation."
+            }
+            KurdishLanguage::Spanish => {
+                "Transcribe this audio/video in Spanish. Maintain proper accents and punctuation."
             }
         }
     }
