@@ -37,6 +37,38 @@ const CAPTION_SIZES: [f64; 3] = [0.04, 0.05, 0.065];
 /// estimate.
 pub const CHARS_PER_SECOND: f32 = 14.0;
 
+/// Spoken language choices for audio transcription.
+pub const SPOKEN_LANGUAGES: &[(&str, &str)] = &[
+    ("auto", "Auto Detect (خۆکار)"),
+    ("ckb", "Kurdish (کوردی Sorani)"),
+    ("ar", "Arabic (عەرەبی)"),
+    ("en", "English (ئینگلیزی)"),
+    ("fa", "Persian (فارسی)"),
+    ("tr", "Turkish (تورکی)"),
+    ("de", "German (ئەڵمانی)"),
+    ("fr", "French (فەرەنسی)"),
+    ("es", "Spanish (ئیسپانی)"),
+];
+
+/// Target language choices for subtitle translation.
+pub const TARGET_LANGUAGES: &[(&str, &str)] = &[
+    ("ckb", "Kurdish / کوردی (Sorani)"),
+    ("en", "English / ئینگلیزی"),
+    ("ar", "Arabic / عەرەبی"),
+    ("fa", "Persian / فارسی"),
+    ("tr", "Turkish / تورکی"),
+    ("de", "German / ئەڵمانی"),
+    ("fr", "French / فەرەنسی"),
+    ("es", "Spanish / ئیسپانی"),
+    ("it", "Italian / ئیتاڵی"),
+    ("ru", "Russian / ڕووسی"),
+    ("zh", "Chinese / چینی"),
+    ("ja", "Japanese / ژاپۆنی"),
+    ("nl", "Dutch / هۆڵەندی"),
+    ("sv", "Swedish / سویدی"),
+    ("pt", "Portuguese / پورتوگالی"),
+];
+
 /// Everything that can happen to the captions sheet.
 #[derive(Clone, Debug)]
 pub enum CaptionsMsg {
@@ -58,8 +90,10 @@ pub enum CaptionsMsg {
     KurdishAiToggled(bool),
     /// Language: 0 Kurdish (Sorani), 1 Arabic (Iraqi), 2 Auto
     KurdishLanguageChanged(i32),
-    /// Translate captions to Central Kurdish toggle
+    /// Translate captions toggle
     TranslateToggled(bool),
+    /// Target language index for translation
+    TargetLanguageChanged(i32),
     /// Animation: 0 None, 1 Fade, 2 Slide Up, 3 Slide Down, 4 Zoom In, 5 Bounce
     AnimationChanged(i32),
     /// Highlight style: 0 Off, 1 Rounded, 2 Square, 3 Underline, 4 Highlight
@@ -121,8 +155,10 @@ pub struct CaptionsPane {
     pub is_kurdish_ai: bool,
     /// 0 Central Kurdish, 1 Iraqi Arabic, 2 Auto
     pub kurdish_language: usize,
-    /// Translate captions into Central Kurdish
+    /// Translate captions toggle
     pub translate_to_kurdish: bool,
+    /// Target language index for translation (from TARGET_LANGUAGES)
+    pub target_language: usize,
     /// 0 None, 1 Fade, 2 Slide Up, 3 Slide Down, 4 Zoom In, 5 Bounce
     pub animation: usize,
     /// 0 Off, 1 Rounded, 2 Square, 3 Underline, 4 Highlight
@@ -153,6 +189,7 @@ impl Default for CaptionsPane {
             is_kurdish_ai: true,
             kurdish_language: 0,
             translate_to_kurdish: false,
+            target_language: 0,
             animation: 0,
             highlight_style: 0,
             running: false,
@@ -206,9 +243,12 @@ impl CaptionsPane {
             CaptionsMsg::SizeChanged(index) => self.size = (index.max(0) as usize).min(2),
             CaptionsMsg::KurdishAiToggled(on) => self.is_kurdish_ai = on,
             CaptionsMsg::KurdishLanguageChanged(index) => {
-                self.kurdish_language = (index.max(0) as usize).min(2);
+                self.kurdish_language = (index.max(0) as usize).min(SPOKEN_LANGUAGES.len().saturating_sub(1));
             }
             CaptionsMsg::TranslateToggled(on) => self.translate_to_kurdish = on,
+            CaptionsMsg::TargetLanguageChanged(index) => {
+                self.target_language = (index.max(0) as usize).min(TARGET_LANGUAGES.len().saturating_sub(1));
+            }
             CaptionsMsg::AnimationChanged(index) => {
                 self.animation = (index.max(0) as usize).min(12);
             }
@@ -308,6 +348,7 @@ impl CaptionsPane {
             is_kurdish_ai: self.is_kurdish_ai,
             kurdish_language: self.kurdish_language,
             translate_to_kurdish: self.translate_to_kurdish,
+            target_language: self.target_language,
             animation: self.animation,
             highlight_style: self.highlight_style,
             timings: std::mem::take(&mut self.timings),
@@ -369,11 +410,23 @@ impl CaptionsPane {
         };
 
         let lang = match self.kurdish_language {
-            0 => concat_speech::gemini::KurdishLanguage::CentralKurdish,
-            1 => concat_speech::gemini::KurdishLanguage::IraqiArabic,
+            1 => concat_speech::gemini::KurdishLanguage::CentralKurdish,
+            2 => concat_speech::gemini::KurdishLanguage::Arabic,
+            3 => concat_speech::gemini::KurdishLanguage::English,
+            4 => concat_speech::gemini::KurdishLanguage::Persian,
+            5 => concat_speech::gemini::KurdishLanguage::Turkish,
+            6 => concat_speech::gemini::KurdishLanguage::German,
+            7 => concat_speech::gemini::KurdishLanguage::French,
+            8 => concat_speech::gemini::KurdishLanguage::Spanish,
             _ => concat_speech::gemini::KurdishLanguage::Auto,
         };
         let translate = self.translate_to_kurdish;
+        let target_lang = TARGET_LANGUAGES
+            .get(self.target_language)
+            .map(|(code, _)| *code)
+            .unwrap_or("ckb")
+            .to_owned();
+        let is_target_kurdish = target_lang == "ckb";
         let custom_keys = studio.prefs.gemini_api_keys.clone();
         let model = studio.prefs.gemini_model.clone();
 
@@ -396,7 +449,7 @@ impl CaptionsPane {
             windows: 1.0,
             animation: self.animation,
             highlight_style: self.highlight_style,
-            is_kurdish: true,
+            is_kurdish: if translate { is_target_kurdish } else { self.kurdish_language <= 1 },
         });
 
         self.running = true;
@@ -438,9 +491,9 @@ impl CaptionsPane {
                 )?;
 
                 if translate {
-                    segments = concat_speech::gemini::translate_to_kurdish(
+                    segments = concat_speech::gemini::translate_captions(
                         &segments,
-                        "ckb",
+                        &target_lang,
                         &custom_keys,
                         model.as_deref(),
                     )?;
@@ -669,6 +722,21 @@ impl CaptionsPane {
             translate_to_kurdish: self.translate_to_kurdish,
             animation: self.animation as i32,
             highlight_style: self.highlight_style as i32,
+            spoken_languages: std::rc::Rc::new(slint::VecModel::from(
+                SPOKEN_LANGUAGES
+                    .iter()
+                    .map(|(_, label)| (*label).into())
+                    .collect::<Vec<slint::SharedString>>(),
+            ))
+            .into(),
+            target_languages: std::rc::Rc::new(slint::VecModel::from(
+                TARGET_LANGUAGES
+                    .iter()
+                    .map(|(_, label)| (*label).into())
+                    .collect::<Vec<slint::SharedString>>(),
+            ))
+            .into(),
+            target_language: self.target_language as i32,
         }
     }
 }

@@ -1707,6 +1707,9 @@ fn start(project: Option<std::path::PathBuf>, smoke: bool) -> Result<(), slint::
     app.on_captions_translate_toggled(on_window!(|state, on: bool| {
         state.handle(Msg::Captions(CaptionsMsg::TranslateToggled(on)));
     }));
+    app.on_captions_target_language_changed(on_window!(|state, index: i32| {
+        state.handle(Msg::Captions(CaptionsMsg::TargetLanguageChanged(index)));
+    }));
     app.on_captions_animation_changed(on_window!(|state, index: i32| {
         state.handle(Msg::Captions(CaptionsMsg::AnimationChanged(index)));
     }));

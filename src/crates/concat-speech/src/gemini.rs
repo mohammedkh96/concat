@@ -257,8 +257,8 @@ Return ONLY the transcription with timestamps. No explanations or extra text."
     ))
 }
 
-/// Translates existing subtitle segments to Central Kurdish (Sorani) or target language.
-pub fn translate_to_kurdish(
+/// Translates existing subtitle segments to any target language.
+pub fn translate_captions(
     captions: &[Segment],
     target_lang: &str,
     custom_keys: &[String],
@@ -268,47 +268,79 @@ pub fn translate_to_kurdish(
         return Ok(Vec::new());
     }
 
-    let caption_texts: Vec<String> = captions
+    let target_name = match target_lang.trim() {
+        "ckb" => "Central Kurdish (Sorani Kurdish)",
+        "en" => "English",
+        "ar" | "ar-IQ" => "Arabic",
+        "fa" => "Persian (Farsi)",
+        "tr" => "Turkish",
+        "de" => "German",
+        "fr" => "French",
+        "es" => "Spanish",
+        "it" => "Italian",
+        "ru" => "Russian",
+        "zh" => "Chinese (Simplified)",
+        "ja" => "Japanese",
+        "nl" => "Dutch",
+        "sv" => "Swedish",
+        "pt" => "Portuguese",
+        other => other,
+    };
+
+    let mut keys: Vec<String> = custom_keys.iter().cloned().collect();
+    for k in DEFAULT_GEMINI_KEYS {
+        if !keys.iter().any(|existing| existing == *k) {
+            keys.push((*k).to_string());
+        }
+    }
+    let chosen_model = model.unwrap_or(DEFAULT_GEMINI_MODEL);
+
+    // Chunk into batches of up to 30 lines for 100% reliable 1:1 line translation
+    let chunk_size = 30;
+    let mut result = Vec::with_capacity(captions.len());
+
+    for chunk in captions.chunks(chunk_size) {
+        let chunk_translated = translate_caption_chunk(chunk, target_name, &keys, chosen_model)?;
+        result.extend(chunk_translated);
+    }
+
+    Ok(result)
+}
+
+/// Backwards-compatible alias for `translate_captions`.
+pub fn translate_to_kurdish(
+    captions: &[Segment],
+    target_lang: &str,
+    custom_keys: &[String],
+    model: Option<&str>,
+) -> Result<Vec<Segment>, String> {
+    translate_captions(captions, target_lang, custom_keys, model)
+}
+
+fn translate_caption_chunk(
+    chunk: &[Segment],
+    target_name: &str,
+    keys: &[String],
+    chosen_model: &str,
+) -> Result<Vec<Segment>, String> {
+    let count = chunk.len();
+    let caption_texts: Vec<String> = chunk
         .iter()
         .enumerate()
         .map(|(i, c)| format!("{}. {}", i + 1, c.text))
         .collect();
     let joined_input = caption_texts.join("\n");
 
-    let count = captions.len();
-    let target_name = if target_lang == "ckb" {
-        "Central Kurdish (Sorani)"
-    } else if target_lang == "ar-IQ" {
-        "Iraqi Arabic"
-    } else if target_lang == "en" {
-        "English"
-    } else if target_lang == "tr" {
-        "Turkish"
-    } else if target_lang == "fa" {
-        "Persian"
-    } else {
-        target_lang
-    };
-
     let prompt = format!(
-        "Translate the following subtitles to {target_name}.\n\n\
-CRITICAL TRANSLATION ACCURACY REQUIREMENTS:\n\n\
-1. EXACT LINE MATCHING:\n\
-   - You MUST return EXACTLY {count} lines of translated text\n\
-   - Each line corresponds to one subtitle\n\
-   - Do NOT merge or split lines\n\
-   - Do NOT add or remove any lines\n\n\
-2. MEANING PRESERVATION:\n\
-   - Preserve the EXACT meaning of each phrase\n\
-   - Keep natural subtitle flow and length\n\
-   - For Kurdish: Use proper Sorani script (ئ، ە، ڕ، ڵ، ڤ، ۆ، ێ، ی، و)\n\n\
-3. OUTPUT FORMAT (VERY IMPORTANT):\n\
-   - Return ONLY the translated text, one translation per line\n\
-   - NO line numbers, NO bullet points, NO markdown labels\n\
-   - EXACTLY {count} output lines\n\n\
+        "Translate the following subtitle lines to {target_name}.\n\n\
+CRITICAL REQUIREMENTS:\n\
+1. EXACT LINE COUNT: You MUST return EXACTLY {count} lines of translated text, corresponding 1-to-1 to each input line.\n\
+2. PRESERVE MEANING: Keep natural subtitle flow, length, and accurate meaning.\n\
+3. Kurdish script: If translating to Kurdish, use proper Sorani Kurdish script (ئ، ە، ڕ، ڵ، ڤ، ۆ، ێ، ی، و).\n\
+4. FORMAT: Output ONLY the translated text, one subtitle per line. Do NOT include numbers, timestamps, markdown, or commentary.\n\n\
 INPUT ({count} lines):\n\
 {joined_input}\n\n\
-OUTPUT (return {count} lines):"
+OUTPUT (return exactly {count} lines):"
     );
 
     let body = serde_json::json!({
@@ -323,14 +355,6 @@ OUTPUT (return {count} lines):"
         }
     });
 
-    let chosen_model = model.unwrap_or(DEFAULT_GEMINI_MODEL);
-    let mut keys: Vec<String> = custom_keys.iter().cloned().collect();
-    for k in DEFAULT_GEMINI_KEYS {
-        if !keys.iter().any(|existing| existing == *k) {
-            keys.push((*k).to_string());
-        }
-    }
-
     let body_str = serde_json::to_string(&body).map_err(|e| e.to_string())?;
     let mut last_error = String::new();
 
@@ -340,7 +364,7 @@ OUTPUT (return {count} lines):"
         );
 
         let response = ureq::post(&url)
-            .timeout(Duration::from_secs(60))
+            .timeout(Duration::from_secs(90))
             .set("Content-Type", "application/json")
             .send_string(&body_str);
 
@@ -356,27 +380,26 @@ OUTPUT (return {count} lines):"
                     .and_then(|p| p.first())
                     .and_then(|part| part["text"].as_str())
                 {
-                    // Clean lines: strip markdown formatting or leading numbering
-                    let lines: Vec<&str> = content_text
+                    let raw_lines: Vec<&str> = content_text
                         .lines()
                         .map(|l| l.trim())
                         .filter(|l| !l.is_empty() && !l.starts_with("```"))
                         .collect();
 
-                    let mut translated_segments = Vec::with_capacity(captions.len());
-                    for (i, orig) in captions.iter().enumerate() {
-                        let text = if let Some(line) = lines.get(i) {
+                    let mut translated = Vec::with_capacity(chunk.len());
+                    for (i, orig) in chunk.iter().enumerate() {
+                        let text = if let Some(line) = raw_lines.get(i) {
                             clean_line(line)
                         } else {
                             orig.text.clone()
                         };
-                        translated_segments.push(Segment {
+                        translated.push(Segment {
                             start: orig.start,
                             end: orig.end,
                             text,
                         });
                     }
-                    return Ok(translated_segments);
+                    return Ok(translated);
                 }
             }
             Ok(res) => {
@@ -405,10 +428,17 @@ fn clean_line(line: &str) -> String {
             s = &s[pos + 2..];
         }
     }
-    s.trim().to_owned()
+    // Also remove wrapping quotes if present
+    let s = s.trim();
+    if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('“') && s.ends_with('”')) {
+        if s.len() >= 2 {
+            return s[1..s.len() - 1].trim().to_owned();
+        }
+    }
+    s.to_owned()
 }
 
-/// Parses Gemini's raw transcription output with `[MM:SS]` timestamps into `Segment`s.
+/// Parses Gemini's raw transcription output into subtitle `Segment`s.
 pub fn parse_transcription(raw: &str, total_duration: f64) -> Vec<Segment> {
     let mut items: Vec<(f64, String)> = Vec::new();
 
@@ -418,15 +448,33 @@ pub fn parse_transcription(raw: &str, total_duration: f64) -> Vec<Segment> {
             continue;
         }
 
-        // Match [MM:SS] or [HH:MM:SS] or [MM:SS.mmm]
-        if let Some(start_bracket) = trimmed.find('[') {
-            if let Some(end_bracket) = trimmed[start_bracket..].find(']') {
-                let time_str = &trimmed[start_bracket + 1..start_bracket + end_bracket];
-                let text = trimmed[start_bracket + end_bracket + 1..].trim();
+        // Try matching bracketed or parenthesized timestamps: [MM:SS] or (MM:SS) or [HH:MM:SS] or [MM:SS - MM:SS]
+        let mut matched = false;
+        for (open, close) in [('[', ']'), ('(', ')')] {
+            if let Some(start_idx) = trimmed.find(open) {
+                if let Some(end_offset) = trimmed[start_idx..].find(close) {
+                    let end_idx = start_idx + end_offset;
+                    let time_str = &trimmed[start_idx + 1..end_idx];
+                    let text = clean_line(&trimmed[end_idx + 1..]);
 
-                if let Some(seconds) = parse_timestamp(time_str) {
+                    if let Some(seconds) = parse_timestamp(time_str) {
+                        if !text.is_empty() {
+                            items.push((seconds, text));
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // If no brackets, check if line starts with timestamp like "00:05 text"
+        if !matched {
+            if let Some(first_word) = trimmed.split_whitespace().next() {
+                if let Some(seconds) = parse_timestamp(first_word) {
+                    let text = clean_line(&trimmed[first_word.len()..]);
                     if !text.is_empty() {
-                        items.push((seconds, text.to_owned()));
+                        items.push((seconds, text));
                     }
                 }
             }
@@ -438,11 +486,12 @@ pub fn parse_transcription(raw: &str, total_duration: f64) -> Vec<Segment> {
         let start = items[i].0;
         let next_start = items.get(i + 1).map(|next| next.0);
 
-        // If next segment exists, end before it; otherwise start + 3.0 (bounded by total_duration)
         let end = match next_start {
-            Some(ns) if ns > start => ns,
+            Some(ns) if ns > start + 0.3 => ns,
             _ => {
-                let est_end = start + 3.0;
+                let word_count = items[i].1.split_whitespace().count();
+                let duration = (word_count as f64 * 0.38).clamp(1.5, 5.0);
+                let est_end = start + duration;
                 if total_duration > 0.0 && est_end > total_duration {
                     total_duration.max(start + 0.5)
                 } else {
@@ -461,7 +510,15 @@ pub fn parse_transcription(raw: &str, total_duration: f64) -> Vec<Segment> {
     segments
 }
 
-fn parse_timestamp(ts: &str) -> Option<f64> {
+/// Parses a timestamp string (e.g. "01:23", "01:23.456", "01:23,456", or range "01:23 - 01:26") into seconds.
+pub fn parse_timestamp(ts: &str) -> Option<f64> {
+    // If range like "00:02 - 00:05" or "00:02 --> 00:05", take the start
+    let ts = ts.split(|c| c == '-' || c == '~' || c == '—' || c == '>')
+        .next()
+        .unwrap_or(ts)
+        .trim();
+    // Normalize commas to dots: "00:02,500" -> "00:02.500"
+    let ts = ts.replace(',', ".");
     let parts: Vec<&str> = ts.split(':').collect();
     match parts.len() {
         2 => {
