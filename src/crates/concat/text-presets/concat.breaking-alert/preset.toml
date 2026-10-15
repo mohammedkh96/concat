@@ -1,0 +1,19 @@
+id = "concat.breaking-alert"
+name = "Breaking Alert Banner"
+language = "Latin"
+order = 73
+offsetY = -0.38
+
+[style]
+content = "🚨 BREAKING NEWS • LIVE UPDATE"
+fontFamily = "Montserrat"
+fontWeight = 900
+fontSize = 0.05
+color = "#ffffff"
+strokeWidth = 0.005
+strokeColor = "#000000"
+shadow = true
+background = "#b91c1cf2"
+backgroundRadius = 0.01
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.018

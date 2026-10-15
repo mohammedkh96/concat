@@ -1,0 +1,19 @@
+id = "concat.cyber-neon"
+name = "Cyber Emerald Neon"
+language = "Latin"
+order = 62
+offsetY = 0.32
+
+[style]
+content = "CYBER NEON 2026"
+fontFamily = "Archivo Black"
+fontWeight = 900
+fontSize = 0.065
+color = "#00ff9d"
+strokeWidth = 0.008
+strokeColor = "#003820"
+shadow = true
+background = "#011f14f0"
+backgroundRadius = 0.02
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.02

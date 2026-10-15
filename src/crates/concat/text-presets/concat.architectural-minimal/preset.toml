@@ -1,0 +1,19 @@
+id = "concat.architectural-minimal"
+name = "Architectural Minimal"
+language = "Latin"
+order = 67
+offsetY = 0.35
+
+[style]
+content = "ARCHITECTURAL MINIMAL"
+fontFamily = "Inter"
+fontWeight = 700
+fontSize = 0.055
+color = "#ffffff"
+strokeWidth = 0.006
+strokeColor = "#000000"
+shadow = true
+background = "#00000000"
+backgroundRadius = 0.0
+backgroundPaddingX = 0.0
+backgroundPaddingY = 0.0

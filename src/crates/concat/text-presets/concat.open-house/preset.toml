@@ -1,0 +1,19 @@
+id = "concat.open-house"
+name = "Open House Banner"
+language = "Latin"
+order = 81
+offsetY = -0.35
+
+[style]
+content = "🏡 OPEN HOUSE • THIS WEEKEND 1-4PM"
+fontFamily = "Montserrat"
+fontWeight = 900
+fontSize = 0.046
+color = "#ffffff"
+strokeWidth = 0.003
+strokeColor = "#1e3a8a"
+shadow = true
+background = "#172554f2"
+backgroundRadius = 0.015
+backgroundPaddingX = 0.042
+backgroundPaddingY = 0.018

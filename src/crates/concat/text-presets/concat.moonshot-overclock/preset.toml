@@ -1,0 +1,20 @@
+id = "concat.moonshot-overclock"
+name = "Moonshot Overclock Cyberpunk"
+language = "Latin"
+order = 111
+offsetY = 0.34
+
+[style]
+content = "> OVERCLOCK 4.8 GHZ"
+fontFamily = "Google Sans Code"
+fontWeight = 800
+fontSize = 0.046
+italic = false
+color = "#22c55e"
+strokeWidth = 0.002
+strokeColor = "#14532d"
+shadow = true
+background = "#052e16f2"
+backgroundRadius = 0.008
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.016

@@ -1,0 +1,20 @@
+id = "concat.moonshot-reach-counter"
+name = "Moonshot Number Story"
+language = "Latin"
+order = 102
+offsetY = 0.33
+
+[style]
+content = "+1,420,000 REACH"
+fontFamily = "Archivo Black"
+fontWeight = 900
+fontSize = 0.056
+italic = false
+color = "#22c55e"
+strokeWidth = 0.004
+strokeColor = "#052e16"
+shadow = true
+background = "#052e16e6"
+backgroundRadius = 0.035
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02

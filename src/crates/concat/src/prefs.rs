@@ -41,6 +41,11 @@ pub struct Preferences {
     pub ui_scale: Option<u32>,
     /// The chosen transcriber model id, e.g. "base.en".
     pub transcriber_model: Option<String>,
+    /// Custom Google Gemini API keys for Kurdish AI transcription & translation.
+    #[serde(default)]
+    pub gemini_api_keys: Vec<String>,
+    /// Selected Gemini model for transcription.
+    pub gemini_model: Option<String>,
     /// The chosen speech model id.
     pub tts_model: Option<String>,
     /// The chosen Kokoro speaker id.

@@ -1,0 +1,19 @@
+id = "concat.kurdish-neon"
+name = "Kurdish Neon Glow"
+language = "Kurdish"
+order = 65
+offsetY = 0.32
+
+[style]
+content = "سەردێڕی درەوشاوەی کوردی"
+fontFamily = "Rabar_021"
+fontWeight = 900
+fontSize = 0.062
+color = "#00ffcc"
+strokeWidth = 0.006
+strokeColor = "#0284c7"
+shadow = true
+background = "#0a192fe6"
+backgroundRadius = 0.03
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.02

@@ -1,0 +1,20 @@
+id = "concat.moonshot-signal-neon"
+name = "Moonshot Signal Neon"
+language = "Latin"
+order = 93
+offsetY = 0.34
+
+[style]
+content = "SIGNAL ELECTRIC NEON"
+fontFamily = "Space Grotesk"
+fontWeight = 800
+fontSize = 0.054
+italic = false
+color = "#06b6d4"
+strokeWidth = 0.004
+strokeColor = "#ec4899"
+shadow = true
+background = "#09090be8"
+backgroundRadius = 0.028
+backgroundPaddingX = 0.042
+backgroundPaddingY = 0.018

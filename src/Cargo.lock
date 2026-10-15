@@ -1155,6 +1155,7 @@ dependencies = [
  "slint",
  "slint-build",
  "toml",
+ "ureq 2.12.1",
  "wayland-backend",
  "wayland-client",
  "wgpu",
@@ -1313,6 +1314,7 @@ dependencies = [
 name = "concat-speech"
 version = "0.2.7"
 dependencies = [
+ "base64 0.22.1",
  "bzip2 0.6.1",
  "concat-host",
  "concat-media",

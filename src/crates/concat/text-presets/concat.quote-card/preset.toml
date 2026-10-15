@@ -1,0 +1,19 @@
+id = "concat.quote-card"
+name = "Viral Quote Card"
+language = "Latin"
+order = 69
+offsetY = 0.0
+
+[style]
+content = "“THE BEST WAY TO PREDICT THE FUTURE IS TO CREATE IT.”"
+fontFamily = "DM Serif Display"
+fontWeight = 700
+fontSize = 0.052
+color = "#fef08a"
+strokeWidth = 0.002
+strokeColor = "#000000"
+shadow = true
+background = "#09090be6"
+backgroundRadius = 0.025
+backgroundPaddingX = 0.05
+backgroundPaddingY = 0.03

@@ -1,0 +1,20 @@
+id = "concat.moonshot-zine"
+name = "Moonshot Daydream Zine"
+language = "Latin"
+order = 113
+offsetY = 0.33
+
+[style]
+content = "DAYDREAM INDIE ZINE"
+fontFamily = "Permanent Marker"
+fontWeight = 800
+fontSize = 0.058
+italic = false
+color = "#09090b"
+strokeWidth = 0.003
+strokeColor = "#facc15"
+shadow = true
+background = "#fffffffa"
+backgroundRadius = 0.005
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.018

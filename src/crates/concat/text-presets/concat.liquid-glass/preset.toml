@@ -1,0 +1,18 @@
+id = "concat.liquid-glass"
+name = "Liquid Glass Frost"
+language = "Latin"
+order = 53
+offsetY = 0.35
+
+[style]
+content = "LUXURY MODERN VILLA"
+fontFamily = "Rabar_021"
+fontWeight = 700
+fontSize = 0.05
+color = "#ffffff"
+strokeWidth = 0.0
+shadow = false
+background = "#1a2342cc"
+backgroundRadius = 0.025
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.025

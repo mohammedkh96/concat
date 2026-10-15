@@ -13,7 +13,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::model::{
-    AppliedFilter, AudioTrack, Clip, ClipKind, ColorRange, ColorSpace, Crop, CustomFont, Cutout,
+    AppliedFilter, AudioTrack, Clip, ClipKey, ClipKind, ColorRange, ColorSpace, Crop, CustomFont, Cutout,
     CutoutMode, Enhanced, KeyEase, KeyProperty, MediaItem, MediaKind, MediaOrigin, Project,
     ShapeStyle, SpeedPoint, Stroke, TextStyle, Timeline, Track, Transition, VideoSettings,
 };
@@ -321,6 +321,9 @@ pub enum Command {
         /// SetClipTransform. Lower thirds are made of this.
         #[serde(default)]
         offset_y: Option<f64>,
+        /// Animation keyframes for the text clip.
+        #[serde(default)]
+        keys: Vec<ClipKey>,
     },
     /// Places a shape: a clip with no media behind it that draws one
     /// figure over the picture, minting a "c" id. Lands the way a title

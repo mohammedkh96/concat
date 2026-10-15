@@ -873,6 +873,14 @@ pub enum ShapeKind {
     Line,
     /// A horizontal rule with a head on its right end.
     Arrow,
+    /// Five-pointed star.
+    Star,
+    /// Heart symbol.
+    Heart,
+    /// Lightning bolt.
+    Bolt,
+    /// Checkmark badge.
+    Check,
 }
 
 impl ShapeKind {
@@ -886,6 +894,10 @@ impl ShapeKind {
             ShapeKind::Trapezoid => "trapezoid",
             ShapeKind::Line => "line",
             ShapeKind::Arrow => "arrow",
+            ShapeKind::Star => "star",
+            ShapeKind::Heart => "heart",
+            ShapeKind::Bolt => "bolt",
+            ShapeKind::Check => "check",
         }
     }
 
@@ -899,6 +911,10 @@ impl ShapeKind {
             ShapeKind::Trapezoid,
             ShapeKind::Line,
             ShapeKind::Arrow,
+            ShapeKind::Star,
+            ShapeKind::Heart,
+            ShapeKind::Bolt,
+            ShapeKind::Check,
         ]
         .into_iter()
         .find(|kind| kind.id() == id)

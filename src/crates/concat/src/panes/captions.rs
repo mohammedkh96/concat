@@ -16,7 +16,7 @@
 use std::sync::Arc;
 
 use concat_project::Command;
-use concat_project::model::TextStyle;
+use concat_project::model::{ClipKey, KeyEase, KeyProperty, TextStyle};
 use concat_speech::JobStage;
 use concat_speech::transcribe::Segment;
 
@@ -54,6 +54,20 @@ pub enum CaptionsMsg {
     ModelChanged(i32),
     PlacementChanged(i32),
     SizeChanged(i32),
+    /// Kurdish AI toggle (Gemini vs Whisper)
+    KurdishAiToggled(bool),
+    /// Language: 0 Kurdish (Sorani), 1 Arabic (Iraqi), 2 Auto
+    KurdishLanguageChanged(i32),
+    /// Translate captions to Central Kurdish toggle
+    TranslateToggled(bool),
+    /// Animation: 0 None, 1 Fade, 2 Slide Up, 3 Slide Down, 4 Zoom In, 5 Bounce
+    AnimationChanged(i32),
+    /// Highlight style: 0 Off, 1 Rounded, 2 Square, 3 Underline, 4 Highlight
+    HighlightChanged(i32),
+    /// Export timeline captions to SRT
+    ExportSrt,
+    /// Export timeline captions to ASS
+    ExportAss,
     /// Run the pass the sheet describes.
     Begin,
     Cancel,
@@ -75,6 +89,9 @@ struct Subject {
     /// the sound in: what the run's timing is kept by.
     model: String,
     windows: f32,
+    animation: usize,
+    highlight_style: usize,
+    is_kurdish: bool,
 }
 
 /// Seconds whisper takes over one thirty-second window, per megabyte of
@@ -83,7 +100,6 @@ struct Subject {
 const WINDOW_SECONDS_PER_MB: f32 = 1.0 / 160.0;
 
 /// The captions sheet's state.
-#[derive(Default)]
 pub struct CaptionsPane {
     pub open: bool,
     /// "Use voice from timeline": the words come from [`Self::clip`]'s sound
@@ -101,6 +117,16 @@ pub struct CaptionsPane {
     pub placement: usize,
     /// 0 small, 1 medium, 2 large.
     pub size: usize,
+    /// Kurdish AI (Gemini) enabled
+    pub is_kurdish_ai: bool,
+    /// 0 Central Kurdish, 1 Iraqi Arabic, 2 Auto
+    pub kurdish_language: usize,
+    /// Translate captions into Central Kurdish
+    pub translate_to_kurdish: bool,
+    /// 0 None, 1 Fade, 2 Slide Up, 3 Slide Down, 4 Zoom In, 5 Bounce
+    pub animation: usize,
+    /// 0 Off, 1 Rounded, 2 Square, 3 Underline, 4 Highlight
+    pub highlight_style: usize,
     pub running: bool,
     /// How far the running transcription looks.
     pub pace: Pace,
@@ -110,6 +136,33 @@ pub struct CaptionsPane {
     subject: Option<Subject>,
     /// How long each model took this session, for the next run's bar.
     timings: Timings,
+    /// Cached sound sources from timeline for fast UI rendering.
+    pub sources_cache: Vec<Source>,
+}
+
+impl Default for CaptionsPane {
+    fn default() -> Self {
+        Self {
+            open: false,
+            from_voice: false,
+            clip: None,
+            text: String::new(),
+            model: 0,
+            placement: 0,
+            size: 1,
+            is_kurdish_ai: true,
+            kurdish_language: 0,
+            translate_to_kurdish: false,
+            animation: 0,
+            highlight_style: 0,
+            running: false,
+            pace: Pace::default(),
+            message: String::new(),
+            subject: None,
+            timings: Timings::default(),
+            sources_cache: Vec::new(),
+        }
+    }
 }
 
 impl CaptionsPane {
@@ -139,9 +192,9 @@ impl CaptionsPane {
             CaptionsMsg::SourceChanged(index) => {
                 if let Some(source) = usize::try_from(index)
                     .ok()
-                    .and_then(|index| sources(studio).into_iter().nth(index))
+                    .and_then(|i| self.sources_cache.get(i))
                 {
-                    self.clip = Some(source.id);
+                    self.clip = Some(source.id.clone());
                     self.message.clear();
                 }
             }
@@ -151,9 +204,26 @@ impl CaptionsPane {
                 self.placement = (index.max(0) as usize).min(2);
             }
             CaptionsMsg::SizeChanged(index) => self.size = (index.max(0) as usize).min(2),
+            CaptionsMsg::KurdishAiToggled(on) => self.is_kurdish_ai = on,
+            CaptionsMsg::KurdishLanguageChanged(index) => {
+                self.kurdish_language = (index.max(0) as usize).min(2);
+            }
+            CaptionsMsg::TranslateToggled(on) => self.translate_to_kurdish = on,
+            CaptionsMsg::AnimationChanged(index) => {
+                self.animation = (index.max(0) as usize).min(12);
+            }
+            CaptionsMsg::HighlightChanged(index) => {
+                self.highlight_style = (index.max(0) as usize).min(6);
+            }
+            CaptionsMsg::ExportSrt => self.export_srt_captions(studio),
+            CaptionsMsg::ExportAss => self.export_ass_captions(studio),
             CaptionsMsg::Begin => {
                 if self.from_voice {
-                    self.run_sound(studio);
+                    if self.is_kurdish_ai {
+                        self.run_kurdish_sound(studio);
+                    } else {
+                        self.run_sound(studio);
+                    }
                 } else {
                     self.run_script(studio);
                 }
@@ -189,6 +259,9 @@ impl CaptionsPane {
                                         ((segment.end - segment.start) / subject.speed).max(0.2),
                                         look,
                                         base.as_ref(),
+                                        subject.animation,
+                                        subject.highlight_style,
+                                        subject.is_kurdish,
                                     )
                                 })
                             })
@@ -219,7 +292,7 @@ impl CaptionsPane {
         let model = installed.iter().position(|model| model.active).unwrap_or(0);
         let sources = sources(studio);
         let sounding = clip.filter(|id| sources.iter().any(|source| &source.id == id));
-        let from_voice = voice || sounding.is_some();
+        let from_voice = voice || sounding.is_some() || !sources.is_empty();
         let clip = sounding.or_else(|| {
             from_voice
                 .then(|| sources.first().map(|source| source.id.clone()))
@@ -232,7 +305,13 @@ impl CaptionsPane {
             model,
             placement: 0,
             size: 1,
+            is_kurdish_ai: self.is_kurdish_ai,
+            kurdish_language: self.kurdish_language,
+            translate_to_kurdish: self.translate_to_kurdish,
+            animation: self.animation,
+            highlight_style: self.highlight_style,
             timings: std::mem::take(&mut self.timings),
+            sources_cache: sources,
             ..CaptionsPane::default()
         };
     }
@@ -258,7 +337,16 @@ impl CaptionsPane {
         let commands: Vec<Command> = lines
             .into_iter()
             .map(|(text, seconds)| {
-                let command = caption_clip(text, at, seconds, look, base.as_ref());
+                let command = caption_clip(
+                    text,
+                    at,
+                    seconds,
+                    look,
+                    base.as_ref(),
+                    self.animation,
+                    self.highlight_style,
+                    self.is_kurdish_ai,
+                );
                 at += seconds;
                 command
             })
@@ -267,6 +355,101 @@ impl CaptionsPane {
         self.open = false;
         studio.apply(Command::Batch { commands });
         studio.notify(&tf("captions.addedCaptions", &[&count]), false);
+    }
+
+    /// Run Kurdish transcription and translation using Google Gemini AI.
+    fn run_kurdish_sound(&mut self, studio: &mut Studio) {
+        let Some(clip) = self.clip.as_ref().and_then(|id| studio.clip(id)).cloned() else {
+            self.message = t("captions.clipNoLongerTimeline");
+            return;
+        };
+        let Some(media) = studio.project().media_by_id(&clip.media_id).cloned() else {
+            self.message = t("captions.clipHasNoFile");
+            return;
+        };
+
+        let lang = match self.kurdish_language {
+            0 => concat_speech::gemini::KurdishLanguage::CentralKurdish,
+            1 => concat_speech::gemini::KurdishLanguage::IraqiArabic,
+            _ => concat_speech::gemini::KurdishLanguage::Auto,
+        };
+        let translate = self.translate_to_kurdish;
+        let custom_keys = studio.prefs.gemini_api_keys.clone();
+        let model = studio.prefs.gemini_model.clone();
+
+        let source_start = clip.source_start;
+        let window = clip.duration * clip.speed;
+        let audio_stream = clip.audio_stream;
+        let media_path = media.path.clone();
+
+        self.pace = Pace::new(vec![
+            (Stage::Reading, 0.5),
+            (Stage::Loading, 1.0),
+            (Stage::Working, (window as f32 / 10.0).max(2.0)),
+        ]);
+
+        self.subject = Some(Subject {
+            start: clip.start,
+            speed: clip.speed,
+            look: self.look(),
+            model: "gemini-2.5-flash".to_owned(),
+            windows: 1.0,
+            animation: self.animation,
+            highlight_style: self.highlight_style,
+            is_kurdish: true,
+        });
+
+        self.running = true;
+        self.message.clear();
+        let epoch = crate::host::project_epoch();
+
+        spawn_in_project(
+            move || {
+                let mut decoder = concat_media::AudioDecoder::open(
+                    &media_path,
+                    &concat_media::AudioOptions {
+                        start: Some(source_start),
+                        duration: Some(window),
+                        filters: Vec::new(),
+                        rate: 16_000,
+                        channels: 1,
+                        format: concat_media::SampleFormat::F32,
+                        stream: audio_stream.map(|index| index as usize),
+                    },
+                )
+                .map_err(|error| error.to_string())?;
+
+                let samples = decoder.collect_f32().map_err(|error| error.to_string())?;
+                if samples.is_empty() {
+                    return Err("No audio found in clip".to_owned());
+                }
+
+                let mut segments = concat_speech::gemini::transcribe_kurdish(
+                    &samples,
+                    16_000,
+                    lang,
+                    &custom_keys,
+                    model.as_deref(),
+                    move |stage| {
+                        on_ui_in_project(epoch, move |studio, _, _| {
+                            studio.handle(Msg::Captions(CaptionsMsg::Progress(stage)));
+                        });
+                    },
+                )?;
+
+                if translate {
+                    segments = concat_speech::gemini::translate_to_kurdish(
+                        &segments,
+                        "ckb",
+                        &custom_keys,
+                        model.as_deref(),
+                    )?;
+                }
+
+                Ok(segments)
+            },
+            |studio, _, _, result| studio.handle(Msg::Captions(CaptionsMsg::Finished(result))),
+        );
     }
 
     /// The sheet's clip through the transcriber on a worker, reporting into
@@ -296,10 +479,6 @@ impl CaptionsPane {
         };
         let dirs = studio.host.dirs.clone();
         let transcriber = Arc::clone(&studio.host.transcriber);
-        // The run as the bar lays it out: the sound read in at a few
-        // hundred times its length, the model loaded unless it still is,
-        // and whisper a window at a time - at the pace the last run on
-        // this model measured, or the estimate by its size.
         let windows = (request.window / 30.0).ceil().max(1.0) as f32;
         let learned = self.timings.get(&model);
         let loaded = studio.host.transcriber.loaded_model().as_deref() == Some(model.as_str());
@@ -322,6 +501,9 @@ impl CaptionsPane {
             look: self.look(),
             model,
             windows,
+            animation: self.animation,
+            highlight_style: self.highlight_style,
+            is_kurdish: false,
         });
         self.running = true;
         self.message.clear();
@@ -338,21 +520,127 @@ impl CaptionsPane {
         );
     }
 
+    /// Export timeline captions to an SRT file.
+    fn export_srt_captions(&mut self, studio: &mut Studio) {
+        let mut segments: Vec<Segment> = studio
+            .timeline()
+            .clips
+            .iter()
+            .filter_map(|clip| {
+                clip.text.as_ref().map(|text| Segment {
+                    start: clip.start,
+                    end: clip.start + clip.duration,
+                    text: text.content.clone(),
+                })
+            })
+            .collect();
+        if segments.is_empty() {
+            studio.notify("No captions on timeline to export", true);
+            return;
+        }
+        segments.sort_by(|a, b| a.start.total_cmp(&b.start));
+        let srt_content = concat_speech::gemini::export_srt(&segments);
+
+        let default_dir = std::env::current_dir().unwrap_or_default();
+        crate::host::after_dialog(
+            move || {
+                crate::platform::save_file(
+                    "Export Subtitles (SRT)",
+                    &default_dir,
+                    "subtitles.srt",
+                    ("SubRip Subtitle", &["srt"]),
+                )
+            },
+            move |studio, _, _, path| match std::fs::write(&path, srt_content) {
+                Ok(_) => studio.notify(&format!("Saved SRT to {}", path.display()), false),
+                Err(err) => studio.notify(&format!("Failed to save SRT: {err}"), true),
+            },
+        );
+    }
+
+    /// Export timeline captions to an ASS file with styling and animation.
+    fn export_ass_captions(&mut self, studio: &mut Studio) {
+        let mut segments: Vec<Segment> = studio
+            .timeline()
+            .clips
+            .iter()
+            .filter_map(|clip| {
+                clip.text.as_ref().map(|text| Segment {
+                    start: clip.start,
+                    end: clip.start + clip.duration,
+                    text: text.content.clone(),
+                })
+            })
+            .collect();
+        if segments.is_empty() {
+            studio.notify("No captions on timeline to export", true);
+            return;
+        }
+        segments.sort_by(|a, b| a.start.total_cmp(&b.start));
+
+        let anim = match self.animation {
+            1 => concat_speech::gemini::SubtitleAnimation::Fade,
+            2 => concat_speech::gemini::SubtitleAnimation::SlideUp,
+            3 => concat_speech::gemini::SubtitleAnimation::SlideDown,
+            4 => concat_speech::gemini::SubtitleAnimation::SlideLeft,
+            5 => concat_speech::gemini::SubtitleAnimation::SlideRight,
+            6 => concat_speech::gemini::SubtitleAnimation::ZoomIn,
+            7 => concat_speech::gemini::SubtitleAnimation::ZoomOut,
+            8 => concat_speech::gemini::SubtitleAnimation::Bounce,
+            9 => concat_speech::gemini::SubtitleAnimation::DropStamp,
+            10 => concat_speech::gemini::SubtitleAnimation::GlitchShake,
+            11 => concat_speech::gemini::SubtitleAnimation::Pulse,
+            12 => concat_speech::gemini::SubtitleAnimation::Drift,
+            _ => concat_speech::gemini::SubtitleAnimation::None,
+        };
+
+        let shape = match self.highlight_style {
+            1 => concat_speech::gemini::HighlightShape::Rounded,
+            2 => concat_speech::gemini::HighlightShape::Square,
+            3 => concat_speech::gemini::HighlightShape::Underline,
+            4 => concat_speech::gemini::HighlightShape::Highlight,
+            5 => concat_speech::gemini::HighlightShape::LiquidGlassWhite,
+            _ => concat_speech::gemini::HighlightShape::None,
+        };
+
+        let style = concat_speech::gemini::AssSubtitleStyle {
+            font_family: "Rabar_021".to_owned(),
+            animation: anim,
+            highlight_shape: shape,
+            y_percent: 0.88,
+            ..Default::default()
+        };
+
+        let ass_content = concat_speech::gemini::export_ass(&segments, &style);
+
+        let default_dir = std::env::current_dir().unwrap_or_default();
+        crate::host::after_dialog(
+            move || {
+                crate::platform::save_file(
+                    "Export Advanced Subtitles (ASS)",
+                    &default_dir,
+                    "subtitles.ass",
+                    ("Advanced SubStation Alpha", &["ass"]),
+                )
+            },
+            move |studio, _, _, path| match std::fs::write(&path, ass_content) {
+                Ok(_) => studio.notify(&format!("Saved ASS to {}", path.display()), false),
+                Err(err) => studio.notify(&format!("Failed to save ASS: {err}"), true),
+            },
+        );
+    }
+
     /// The sheet as Slint shows it.
     pub fn data(&self, studio: &Studio) -> CaptionsSheetData {
-        let sources = if self.open {
-            sources(studio)
-        } else {
-            Vec::new()
-        };
         let source = self
             .clip
             .as_ref()
-            .and_then(|id| sources.iter().position(|source| &source.id == id))
+            .and_then(|id| self.sources_cache.iter().position(|source| &source.id == id))
             .map_or(-1, |index| index as i32);
-        let labels: Vec<slint::SharedString> = sources
-            .into_iter()
-            .map(|source| source.label.into())
+        let labels: Vec<slint::SharedString> = self
+            .sources_cache
+            .iter()
+            .map(|source| source.label.as_str().into())
             .collect();
         CaptionsSheetData {
             open: self.open,
@@ -376,15 +664,21 @@ impl CaptionsPane {
             .into(),
             ready: !installed(&studio.settings.transcribers).is_empty(),
             message: self.message.as_str().into(),
+            is_kurdish_ai: self.is_kurdish_ai,
+            kurdish_language: self.kurdish_language as i32,
+            translate_to_kurdish: self.translate_to_kurdish,
+            animation: self.animation as i32,
+            highlight_style: self.highlight_style as i32,
         }
     }
 }
 
 /// A clip on the timeline whose voice can be captioned, as the sheet's
 /// list shows it.
-struct Source {
-    id: String,
-    label: String,
+#[derive(Clone, Debug, Default)]
+pub struct Source {
+    pub id: String,
+    pub label: String,
 }
 
 /// The clips on the current timeline that have sound, in the order they
@@ -425,20 +719,484 @@ fn source_label(name: &str, start: f64) -> String {
     }
 }
 
+/// Generates animation keyframes for the given animation preset and target offset_y.
+fn animation_keys(animation: usize, offset_y: f64) -> Vec<ClipKey> {
+    match animation {
+        1 => {
+            // Fade
+            vec![
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.15,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.85,
+                    value: 1.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 1.0,
+                    value: 0.0,
+                    ease: KeyEase::IN,
+                },
+            ]
+        }
+        2 => {
+            // Slide Up
+            vec![
+                ClipKey {
+                    property: KeyProperty::OffsetY,
+                    at: 0.0,
+                    value: (offset_y + 0.07).clamp(-0.5, 0.5),
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetY,
+                    at: 0.25,
+                    value: offset_y,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.2,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        3 => {
+            // Slide Down
+            vec![
+                ClipKey {
+                    property: KeyProperty::OffsetY,
+                    at: 0.0,
+                    value: (offset_y - 0.07).clamp(-0.5, 0.5),
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetY,
+                    at: 0.25,
+                    value: offset_y,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.2,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        4 => {
+            // Slide Left
+            vec![
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.0,
+                    value: -0.12,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.25,
+                    value: 0.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.2,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        5 => {
+            // Slide Right
+            vec![
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.0,
+                    value: 0.12,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.25,
+                    value: 0.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.2,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        6 => {
+            // Zoom In
+            vec![
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.0,
+                    value: 0.45,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.25,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.2,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        7 => {
+            // Zoom Out
+            vec![
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.0,
+                    value: 1.45,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.25,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.2,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        8 => {
+            // Bounce Pop
+            vec![
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.0,
+                    value: 0.35,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.18,
+                    value: 1.25,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.28,
+                    value: 0.95,
+                    ease: KeyEase::IN_OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.38,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.12,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        9 => {
+            // Drop Stamp
+            vec![
+                ClipKey {
+                    property: KeyProperty::OffsetY,
+                    at: 0.0,
+                    value: (offset_y - 0.14).clamp(-0.5, 0.5),
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetY,
+                    at: 0.18,
+                    value: (offset_y + 0.015).clamp(-0.5, 0.5),
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetY,
+                    at: 0.26,
+                    value: offset_y,
+                    ease: KeyEase::IN_OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.0,
+                    value: 1.18,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.26,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.1,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        10 => {
+            // Glitch Shake
+            vec![
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.05,
+                    value: -0.018,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.10,
+                    value: 0.022,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.15,
+                    value: -0.012,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.20,
+                    value: 0.008,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetX,
+                    at: 0.25,
+                    value: 0.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.0,
+                    value: 1.12,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.25,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.08,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        11 => {
+            // Pulse Beat
+            vec![
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.0,
+                    value: 1.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.25,
+                    value: 1.10,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.50,
+                    value: 1.0,
+                    ease: KeyEase::IN_OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.75,
+                    value: 1.08,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 1.0,
+                    value: 1.0,
+                    ease: KeyEase::IN_OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.12,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+            ]
+        }
+        12 => {
+            // Kinetic Drift
+            vec![
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 0.0,
+                    value: 1.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Scale,
+                    at: 1.0,
+                    value: 1.06,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetY,
+                    at: 0.0,
+                    value: (offset_y + 0.012).clamp(-0.5, 0.5),
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::OffsetY,
+                    at: 1.0,
+                    value: (offset_y - 0.012).clamp(-0.5, 0.5),
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.0,
+                    value: 0.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.15,
+                    value: 1.0,
+                    ease: KeyEase::OUT,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 0.85,
+                    value: 1.0,
+                    ease: KeyEase::LINEAR,
+                },
+                ClipKey {
+                    property: KeyProperty::Opacity,
+                    at: 1.0,
+                    value: 0.0,
+                    ease: KeyEase::IN,
+                },
+            ]
+        }
+        _ => Vec::new(),
+    }
+}
+
 /// One caption as a title clip: its words, when and for how long, and
 /// its look.
+#[allow(clippy::too_many_arguments)]
 fn caption_clip(
     text: String,
     start: f64,
     duration: f64,
     look: (f64, f64),
     base: Option<&TextStyle>,
+    animation: usize,
+    highlight_style: usize,
+    is_kurdish: bool,
 ) -> Command {
     let (offset_y, font_size) = look;
-    // The kept look where there is one - family, weight, colours, stroke,
-    // shadow, background - at the caption's own size and place; the
-    // bundled face otherwise.
-    let style = match base {
+    let mut style = match base {
         Some(base) => TextStyle {
             content: text,
             font_size,
@@ -448,12 +1206,86 @@ fn caption_clip(
         },
         None => TextStyle {
             content: text,
-            font_family: "Hanken Grotesk".to_owned(),
+            font_family: if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Hanken Grotesk".to_owned()
+            },
             font_size,
-            font_weight: 600.0,
+            font_weight: 700.0,
+            color: "#ffffff".to_owned(),
+            stroke_width: 0.003,
+            stroke_color: "#000000".to_owned(),
+            shadow: true,
             ..TextStyle::default()
         },
     };
+
+    if is_kurdish {
+        style.font_family = "Rabar_021".to_owned();
+    }
+
+    // Apply highlight styles ported from trplugin
+    match highlight_style {
+        1 => {
+            // Rounded background plate
+            style.background = "#000000bb".to_owned();
+            style.background_radius = 0.015;
+            style.background_padding_x = 0.02;
+            style.background_padding_y = 0.01;
+            style.color = "#ffffff".to_owned();
+        }
+        2 => {
+            // Square / Box background plate
+            style.background = "#ffff00f0".to_owned();
+            style.background_radius = 0.0;
+            style.background_padding_x = 0.02;
+            style.background_padding_y = 0.01;
+            style.color = "#000000".to_owned();
+            style.stroke_width = 0.0;
+        }
+        3 => {
+            // Underline / outline accent
+            style.stroke_width = 0.006;
+            style.stroke_color = "#ffcc00".to_owned();
+            style.shadow = true;
+        }
+        4 => {
+            // High-contrast Highlight box
+            style.background = "#ffeb3b".to_owned();
+            style.background_radius = 0.008;
+            style.background_padding_x = 0.025;
+            style.background_padding_y = 0.012;
+            style.color = "#000000".to_owned();
+            style.stroke_width = 0.0;
+        }
+        5 => {
+            // Liquid Glass White frosted background shape
+            style.background = "#ffffffd9".to_owned();
+            style.background_radius = 0.035;
+            style.background_padding_x = 0.04;
+            style.background_padding_y = 0.018;
+            style.color = "#0f172a".to_owned();
+            style.stroke_width = 0.003;
+            style.stroke_color = "#ffffff".to_owned();
+            style.shadow = true;
+        }
+        6 => {
+            // Liquid Glass Dark obsidian background shape
+            style.background = "#0f172ae0".to_owned();
+            style.background_radius = 0.035;
+            style.background_padding_x = 0.04;
+            style.background_padding_y = 0.018;
+            style.color = "#ffffff".to_owned();
+            style.stroke_width = 0.003;
+            style.stroke_color = "#38bdf888".to_owned();
+            style.shadow = true;
+        }
+        _ => {}
+    }
+
+    let keys = animation_keys(animation, offset_y);
+
     Command::AddTextClip {
         track_id: None,
         above: true,
@@ -461,6 +1293,7 @@ fn caption_clip(
         style: Some(style),
         duration: Some(duration),
         offset_y: Some(offset_y),
+        keys,
     }
 }
 
@@ -496,8 +1329,8 @@ fn sentences(paragraph: &str) -> Vec<String> {
     while let Some(ch) = chars.next() {
         current.push(ch);
         let ends = match ch {
-            '。' | '！' | '？' => true,
-            '.' | '!' | '?' => chars.peek().is_none_or(|next| next.is_whitespace()),
+            '。' | '！' | '؟' | '?' | '!' => true,
+            '.' => chars.peek().is_none_or(|next| next.is_whitespace()),
             _ => false,
         };
         if ends {

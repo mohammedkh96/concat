@@ -1,0 +1,20 @@
+id = "concat.moonshot-vinyl"
+name = "Moonshot Vinyl B-Side"
+language = "Latin"
+order = 112
+offsetY = 0.34
+
+[style]
+content = "TRACK 03 // B-SIDE STEREO"
+fontFamily = "Hanken Grotesk"
+fontWeight = 700
+fontSize = 0.046
+italic = false
+color = "#fef3c7"
+strokeWidth = 0.002
+strokeColor = "#451a03"
+shadow = true
+background = "#1c1917f2"
+backgroundRadius = 0.02
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.018

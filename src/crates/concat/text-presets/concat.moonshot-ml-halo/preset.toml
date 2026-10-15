@@ -1,0 +1,20 @@
+id = "concat.moonshot-ml-halo"
+name = "Moonshot Moonbeam Halo"
+language = "Latin"
+order = 119
+offsetY = 0.33
+
+[style]
+content = "RADIANT MOONBEAM HALO"
+fontFamily = "Space Grotesk"
+fontWeight = 800
+fontSize = 0.052
+italic = false
+color = "#e0e7ff"
+strokeWidth = 0.003
+strokeColor = "#4338ca"
+shadow = true
+background = "#312e81d9"
+backgroundRadius = 0.03
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02

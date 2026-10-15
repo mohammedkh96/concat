@@ -1,0 +1,20 @@
+id = "concat.moonshot-blush-lab"
+name = "Moonshot Blush Lab"
+language = "Latin"
+order = 117
+offsetY = 0.34
+
+[style]
+content = "soft blush lab glow"
+fontFamily = "Hanken Grotesk"
+fontWeight = 600
+fontSize = 0.048
+italic = false
+color = "#831843"
+strokeWidth = 0.001
+strokeColor = "#fbcfe8"
+shadow = false
+background = "#fce7f3f0"
+backgroundRadius = 0.035
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.018

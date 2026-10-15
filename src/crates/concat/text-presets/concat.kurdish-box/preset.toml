@@ -1,0 +1,17 @@
+id = "concat.kurdish-box"
+name = "Kurdish box"
+language = "Kurdish"
+order = 34
+offsetY = 0.35
+
+[style]
+content = "دەقی دیاریکراو"
+fontFamily = "Rabar_040"
+fontWeight = 700
+fontSize = 0.052
+color = "#000000"
+background = "#ffff00f0"
+backgroundRadius = 0.004
+backgroundPaddingX = 0.02
+backgroundPaddingY = 0.01
+shadow = false

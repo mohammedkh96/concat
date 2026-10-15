@@ -1,0 +1,19 @@
+id = "concat.penthouse-mono"
+name = "Monochrome Penthouse"
+language = "Latin"
+order = 64
+offsetY = 0.32
+
+[style]
+content = "PENTHOUSE SUITE"
+fontFamily = "Hanken Grotesk"
+fontWeight = 700
+fontSize = 0.052
+color = "#ffffff"
+strokeWidth = 0.003
+strokeColor = "#71717a"
+shadow = true
+background = "#18181bf2"
+backgroundRadius = 0.02
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.02

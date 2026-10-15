@@ -1,0 +1,20 @@
+id = "concat.moonshot-spatial-yellow"
+name = "Moonshot Spatial Gold"
+language = "Latin"
+order = 88
+offsetY = -0.24
+
+[style]
+content = "SPATIAL GOLD"
+fontFamily = "Bebas Neue"
+fontWeight = 900
+fontSize = 0.095
+italic = false
+color = "#fbbf24"
+strokeWidth = 0.004
+strokeColor = "#171717"
+shadow = true
+background = ""
+backgroundRadius = 0.0
+backgroundPaddingX = 0.0
+backgroundPaddingY = 0.0

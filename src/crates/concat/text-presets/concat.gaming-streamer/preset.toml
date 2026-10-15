@@ -1,0 +1,19 @@
+id = "concat.gaming-streamer"
+name = "Gaming Streamer Alert"
+language = "Latin"
+order = 72
+offsetY = -0.32
+
+[style]
+content = "🔥 VICTORY ROYALE #01"
+fontFamily = "Bebas Neue"
+fontWeight = 900
+fontSize = 0.078
+color = "#ff007f"
+strokeWidth = 0.007
+strokeColor = "#3b0764"
+shadow = true
+background = "#1e0836f2"
+backgroundRadius = 0.022
+backgroundPaddingX = 0.048
+backgroundPaddingY = 0.02

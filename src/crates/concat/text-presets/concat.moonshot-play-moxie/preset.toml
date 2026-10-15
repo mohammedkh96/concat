@@ -1,0 +1,20 @@
+id = "concat.moonshot-play-moxie"
+name = "Moonshot Pop Off Moxie"
+language = "Latin"
+order = 116
+offsetY = 0.32
+
+[style]
+content = "POP OFF MOXIE!"
+fontFamily = "Bangers"
+fontWeight = 400
+fontSize = 0.072
+italic = false
+color = "#ffffff"
+strokeWidth = 0.006
+strokeColor = "#e11d48"
+shadow = true
+background = "#e11d48e6"
+backgroundRadius = 0.02
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02

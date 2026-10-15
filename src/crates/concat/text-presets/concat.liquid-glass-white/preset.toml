@@ -1,0 +1,19 @@
+id = "concat.liquid-glass-white"
+name = "Liquid Glass White"
+language = "Latin"
+order = 83
+offsetY = 0.35
+
+[style]
+content = "LIQUID GLASS WHITE"
+fontFamily = "Inter"
+fontWeight = 800
+fontSize = 0.052
+color = "#0f172a"
+strokeWidth = 0.003
+strokeColor = "#ffffff"
+shadow = true
+background = "#ffffffd9"
+backgroundRadius = 0.035
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.022

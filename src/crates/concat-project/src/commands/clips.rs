@@ -72,6 +72,7 @@ pub(super) fn apply(
             duration,
             offset_y,
             above,
+            keys,
         } => {
             let style = style.unwrap_or_default();
             let duration = duration
@@ -100,6 +101,7 @@ pub(super) fn apply(
             );
             clip.offset_y = offset_y.unwrap_or(0.0).clamp(-MAX_OFFSET, MAX_OFFSET);
             clip.text = Some(style);
+            clip.keys = keys;
             timeline.clips.push(Arc::new(clip));
             Ok(Outcome {
                 created_id: Some(id),

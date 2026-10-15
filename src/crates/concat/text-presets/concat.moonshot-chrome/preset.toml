@@ -1,0 +1,20 @@
+id = "concat.moonshot-chrome"
+name = "Moonshot Liquid Chrome"
+language = "Latin"
+order = 123
+offsetY = 0.33
+
+[style]
+content = "LIQUID CHROME METALLIC"
+fontFamily = "Space Grotesk"
+fontWeight = 900
+fontSize = 0.054
+italic = true
+color = "#f8fafc"
+strokeWidth = 0.006
+strokeColor = "#94a3b8"
+shadow = true
+background = "#020617eb"
+backgroundRadius = 0.02
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02

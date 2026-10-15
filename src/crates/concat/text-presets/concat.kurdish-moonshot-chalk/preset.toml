@@ -1,0 +1,20 @@
+id = "concat.kurdish-moonshot-chalk"
+name = "Kurdish Chalk (تەباشیری تەختەڕەش)"
+language = "Kurdish"
+order = 127
+offsetY = 0.32
+
+[style]
+content = "وانەی گرنگ و تێبینی سەر تەختە"
+fontFamily = "Rabar_022"
+fontWeight = 800
+fontSize = 0.06
+italic = false
+color = "#f8fafc"
+strokeWidth = 0.002
+strokeColor = "#94a3b8"
+shadow = true
+background = "#1e293be8"
+backgroundRadius = 0.02
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02

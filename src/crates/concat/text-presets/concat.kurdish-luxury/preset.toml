@@ -1,0 +1,19 @@
+id = "concat.kurdish-luxury"
+name = "Kurdish Royal Gold"
+language = "Kurdish"
+order = 66
+offsetY = 0.32
+
+[style]
+content = "شاهانە و زێڕین"
+fontFamily = "Rabar_022"
+fontWeight = 900
+fontSize = 0.064
+color = "#ffd700"
+strokeWidth = 0.006
+strokeColor = "#b45309"
+shadow = true
+background = "#110f08f2"
+backgroundRadius = 0.025
+backgroundPaddingX = 0.042
+backgroundPaddingY = 0.02

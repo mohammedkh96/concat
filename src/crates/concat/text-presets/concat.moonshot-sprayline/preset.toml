@@ -1,0 +1,20 @@
+id = "concat.moonshot-sprayline"
+name = "Moonshot Sprayline"
+language = "Latin"
+order = 94
+offsetY = 0.33
+
+[style]
+content = "SPRAYLINE STENCIL"
+fontFamily = "Permanent Marker"
+fontWeight = 700
+fontSize = 0.062
+italic = false
+color = "#ffffff"
+strokeWidth = 0.008
+strokeColor = "#dc2626"
+shadow = true
+background = ""
+backgroundRadius = 0.0
+backgroundPaddingX = 0.0
+backgroundPaddingY = 0.0

@@ -50,6 +50,7 @@ pub use platform::{ExportPublisher, FilePicker, install_export_publisher, instal
 mod panes;
 mod prefs;
 mod presets;
+pub mod sound_effects;
 mod source;
 mod studio;
 mod sysinfo;
@@ -83,6 +84,7 @@ use dock::{Dock, METERS_MIN_W, SEAT_MIN_GRAB, SEAT_MIN_H, SEAT_MIN_W};
 use host::{Host, Shell};
 use panes::Msg;
 use panes::captions::CaptionsMsg;
+use panes::downloader::DownloaderMsg;
 use panes::export::ExportMsg;
 use panes::media_bin::MediaMsg;
 use panes::monitor::MonitorMsg;
@@ -750,6 +752,15 @@ fn start(project: Option<std::path::PathBuf>, smoke: bool) -> Result<(), slint::
             );
         });
     });
+    editor.on_download_media(on_window!(|state| {
+        state.handle(Msg::Downloader(DownloaderMsg::Open));
+    }));
+    editor.on_audition_sfx(on_window!(|state, id: SharedString| {
+        state.audition_sfx(id.as_str());
+    }));
+    editor.on_insert_sfx(on_window!(|state, id: SharedString| {
+        state.insert_sfx(id.as_str());
+    }));
     // Font files, the way media files come in: the system's picker, and
     // the answer later, on the window's thread.
     editor.on_text_style_default(on_window!(|state| {
@@ -1687,6 +1698,27 @@ fn start(project: Option<std::path::PathBuf>, smoke: bool) -> Result<(), slint::
     app.on_captions_size_changed(on_window!(|state, index: i32| {
         state.handle(Msg::Captions(CaptionsMsg::SizeChanged(index)));
     }));
+    app.on_captions_kurdish_ai_toggled(on_window!(|state, on: bool| {
+        state.handle(Msg::Captions(CaptionsMsg::KurdishAiToggled(on)));
+    }));
+    app.on_captions_kurdish_language_changed(on_window!(|state, index: i32| {
+        state.handle(Msg::Captions(CaptionsMsg::KurdishLanguageChanged(index)));
+    }));
+    app.on_captions_translate_toggled(on_window!(|state, on: bool| {
+        state.handle(Msg::Captions(CaptionsMsg::TranslateToggled(on)));
+    }));
+    app.on_captions_animation_changed(on_window!(|state, index: i32| {
+        state.handle(Msg::Captions(CaptionsMsg::AnimationChanged(index)));
+    }));
+    app.on_captions_highlight_changed(on_window!(|state, index: i32| {
+        state.handle(Msg::Captions(CaptionsMsg::HighlightChanged(index)));
+    }));
+    app.on_captions_export_srt(on_window!(|state| {
+        state.handle(Msg::Captions(CaptionsMsg::ExportSrt));
+    }));
+    app.on_captions_export_ass(on_window!(|state| {
+        state.handle(Msg::Captions(CaptionsMsg::ExportAss));
+    }));
     app.on_captions_begin(on_window!(|state| {
         state.handle(Msg::Captions(CaptionsMsg::Begin));
     }));
@@ -1735,6 +1767,29 @@ fn start(project: Option<std::path::PathBuf>, smoke: bool) -> Result<(), slint::
         state.handle(Msg::Speech(SpeechMsg::Cancel));
     }));
 
+    // ── the downloader sheet ──
+    app.on_downloader_closed(on_window!(|state| {
+        state.handle(Msg::Downloader(DownloaderMsg::Close));
+    }));
+    app.on_downloader_url_edited(on_window!(|state, url: SharedString| {
+        state.handle(Msg::Downloader(DownloaderMsg::UrlEdited(url.to_string())));
+    }));
+    app.on_downloader_format_changed(on_window!(|state, format: i32| {
+        state.handle(Msg::Downloader(DownloaderMsg::FormatChanged(format)));
+    }));
+    app.on_downloader_insert_timeline_toggled(on_window!(|state, on: bool| {
+        state.handle(Msg::Downloader(DownloaderMsg::InsertTimelineToggled(on)));
+    }));
+    app.on_downloader_quick_preset(on_window!(|state, url: SharedString| {
+        state.handle(Msg::Downloader(DownloaderMsg::QuickPreset(url.to_string())));
+    }));
+    app.on_downloader_begin(on_window!(|state| {
+        state.handle(Msg::Downloader(DownloaderMsg::Begin));
+    }));
+    app.on_downloader_cancel(on_window!(|state| {
+        state.handle(Msg::Downloader(DownloaderMsg::Cancel));
+    }));
+
     // ── the title-bar menus ──
     app.on_menu_opened(on_window!(|state, index: i32| {
         state.open_menu = index;
@@ -1768,6 +1823,7 @@ fn start(project: Option<std::path::PathBuf>, smoke: bool) -> Result<(), slint::
                         "export" => state.handle(Msg::Export(ExportMsg::Open)),
                         "template" => state.save_template(),
                         "speech" => state.handle(Msg::Speech(SpeechMsg::Open)),
+                        "downloader" => state.handle(Msg::Downloader(DownloaderMsg::Open)),
                         "clear-cache" => state.clear_project_cache(),
                         "settings" => state.handle(Msg::Settings(SettingsMsg::Open)),
                         "close-project" => state.close_project(),

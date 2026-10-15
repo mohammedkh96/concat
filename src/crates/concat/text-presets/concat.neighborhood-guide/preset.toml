@@ -1,0 +1,19 @@
+id = "concat.neighborhood-guide"
+name = "Neighborhood Guide Tag"
+language = "Latin"
+order = 82
+offsetY = 0.38
+
+[style]
+content = "📍 DOWNTOWN DISTRICT • WALK SCORE 98"
+fontFamily = "Inter"
+fontWeight = 800
+fontSize = 0.042
+color = "#ffffff"
+strokeWidth = 0.003
+strokeColor = "#0f766e"
+shadow = true
+background = "#134e4af2"
+backgroundRadius = 0.025
+backgroundPaddingX = 0.038
+backgroundPaddingY = 0.016

@@ -1,0 +1,20 @@
+id = "concat.moonshot-depth"
+name = "Moonshot Deep Focus"
+language = "Latin"
+order = 86
+offsetY = -0.25
+
+[style]
+content = "DEEP FOCUS 3D"
+fontFamily = "Bebas Neue"
+fontWeight = 900
+fontSize = 0.095
+italic = false
+color = "#ffffff"
+strokeWidth = 0.005
+strokeColor = "#0f172a"
+shadow = true
+background = "#00000066"
+backgroundRadius = 0.02
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.015

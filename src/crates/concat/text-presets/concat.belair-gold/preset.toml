@@ -1,0 +1,19 @@
+id = "concat.belair-gold"
+name = "Bel Air Luxury Gold"
+language = "Latin"
+order = 55
+offsetY = 0.32
+
+[style]
+content = "LUXURY RESIDENCE"
+fontFamily = "DM Serif Display"
+fontWeight = 700
+fontSize = 0.055
+color = "#fdfdfd"
+strokeWidth = 0.003
+strokeColor = "#e5c07b"
+shadow = true
+background = "#0a0a0ee0"
+backgroundRadius = 0.03
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.02

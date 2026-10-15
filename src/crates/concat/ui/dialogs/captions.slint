@@ -55,6 +55,16 @@ export struct CaptionsSheetData {
     ready: bool,
     /// Why the last run failed, when it did.
     message: string,
+    /// Use Kurdish AI (Gemini) instead of local whisper
+    is-kurdish-ai: bool,
+    /// 0 Kurdish, 1 Arabic, 2 Auto
+    kurdish-language: int,
+    /// Whether to auto-translate captions to Central Kurdish
+    translate-to-kurdish: bool,
+    /// 0 None, 1 Fade, 2 Slide Up, 3 Slide Down, 4 Zoom In, 5 Bounce
+    animation: int,
+    /// 0 Off, 1 Rounded, 2 Square, 3 Underline, 4 Highlight
+    highlight-style: int,
 }
 
 export component CaptionsDialog inherits Modal {
@@ -68,6 +78,13 @@ export component CaptionsDialog inherits Modal {
     callback model-changed(index: int);
     callback placement-changed(index: int);
     callback size-changed(index: int);
+    callback kurdish-ai-toggled(on: bool);
+    callback kurdish-language-changed(index: int);
+    callback translate-toggled(on: bool);
+    callback animation-changed(index: int);
+    callback highlight-changed(index: int);
+    callback export-srt();
+    callback export-ass();
     callback begin();
     callback cancel();
 
@@ -76,7 +93,7 @@ export component CaptionsDialog inherits Modal {
     open: root.data.open;
     title: I18n.t("captions.captions");
     glyph: Glyph.text-mark;
-    surface-width: 480px;
+    surface-width: 520px;
     dismissable: !root.data.running;
 
     // The script being typed, held apart from `data.text` the way the Field
@@ -95,29 +112,20 @@ export component CaptionsDialog inherits Modal {
     init => { root.draft = root.data.text; }
 
     VerticalLayout {
-        // The switch, above both halves. A row of its own rather than a
-        // DialogRow, whose label column is too narrow for the words.
+        // Prominent Mode Selector: Audio AI vs Manual Script
         if !root.data.running: HorizontalLayout {
             padding-left: 14px;
             padding-right: 14px;
             padding-top: 14px;
-            spacing: 10px;
+            padding-bottom: 2px;
 
-            Text {
-                horizontal-stretch: 1;
-                text: I18n.t("captions.useVoiceFromTimeline");
-                color: Theme.fg;
-                font-size: Theme.fs;
-                vertical-alignment: center;
-                wrap: word-wrap;
-            }
-
-            VerticalLayout {
-                alignment: center;
-                Switch {
-                    checked: root.from-voice;
-                    toggled(on) => { root.voice-toggled(on); }
-                }
+            SegmentedControl {
+                options: [
+                    "🎙️ " + I18n.t("common.transcriber"),
+                    "✍️ " + I18n.t("common.script"),
+                ];
+                current: root.from-voice ? 0 : 1;
+                changed(index) => { root.voice-toggled(index == 0); }
             }
         }
 
@@ -125,7 +133,34 @@ export component CaptionsDialog inherits Modal {
             first: true;
             title: I18n.t("common.transcriber");
 
-            DialogRow {
+            if root.data.sources.length == 0: Rectangle {
+                border-radius: Theme.r;
+                background: Theme.well;
+                border-width: 1px;
+                border-color: Theme.line;
+
+                HorizontalLayout {
+                    padding: 10px;
+                    spacing: 8px;
+                    alignment: center;
+
+                    Icon {
+                        glyph: Glyph.import;
+                        size: 16px;
+                        tint: Theme.accent;
+                    }
+
+                    Text {
+                        horizontal-stretch: 1;
+                        text: I18n.t("captions.noVoiceOnTimeline");
+                        color: Theme.fg-muted;
+                        font-size: Theme.fs-sm;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+
+            if root.data.sources.length > 0: DialogRow {
                 label: I18n.t("common.audio");
                 Select {
                     options: root.data.sources;
@@ -138,6 +173,46 @@ export component CaptionsDialog inherits Modal {
 
             DialogRow {
                 label: I18n.t("common.model");
+                SegmentedControl {
+                    options: ["Kurdish AI (Gemini)", "Local Whisper"];
+                    current: root.data.is-kurdish-ai ? 0 : 1;
+                    changed(index) => { root.kurdish-ai-toggled(index == 0); }
+                }
+            }
+
+            if root.data.is-kurdish-ai: DialogRow {
+                label: "Language";
+                SegmentedControl {
+                    options: ["Kurdish", "Arabic", "Auto"];
+                    current: root.data.kurdish-language;
+                    changed(index) => { root.kurdish-language-changed(index); }
+                }
+            }
+
+            if root.data.is-kurdish-ai: HorizontalLayout {
+                padding-top: 4px;
+                padding-bottom: 4px;
+                spacing: 10px;
+
+                Text {
+                    horizontal-stretch: 1;
+                    text: I18n.t("captions.translateToKurdish");
+                    color: Theme.fg;
+                    font-size: Theme.fs;
+                    vertical-alignment: center;
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    Switch {
+                        checked: root.data.translate-to-kurdish;
+                        toggled(on) => { root.translate-toggled(on); }
+                    }
+                }
+            }
+
+            if !root.data.is-kurdish-ai: DialogRow {
+                label: I18n.t("common.model");
                 Select {
                     options: root.models;
                     current: root.data.model;
@@ -147,7 +222,7 @@ export component CaptionsDialog inherits Modal {
                 }
             }
 
-            if !root.data.ready: Text {
+            if !root.data.is-kurdish-ai && !root.data.ready: Text {
                 text: I18n.t("captions.downloadTranscriberModelFirst");
                 color: Theme.fg-muted;
                 font-size: Theme.fs-sm;
@@ -224,6 +299,67 @@ export component CaptionsDialog inherits Modal {
                     options: [I18n.t("common.small"), I18n.t("common.medium"), I18n.t("common.large")];
                     current: root.data.size;
                     changed(index) => { root.size-changed(index); }
+                }
+            }
+
+            DialogRow {
+                label: I18n.t("captions.animation");
+                Select {
+                    options: [
+                        "None (هیچ)",
+                        "Fade (کاڵبوونەوە)",
+                        "Slide Up (خلیسکان بەرەو سەرەوە)",
+                        "Slide Down (خلیسکان بەرەو خوارەوە)",
+                        "Slide Left (خلیسکان لە چەپ)",
+                        "Slide Right (خلیسکان لە ڕاست)",
+                        "Zoom In (نزیکبوونەوە)",
+                        "Zoom Out (دوورکەوتنەوە)",
+                        "Bounce Pop (بازدان)",
+                        "Drop Stamp (کەوتنی بەهێز)",
+                        "Glitch Shake (لەرزینی گلیچ)",
+                        "Pulse Beat (لێدانی نەرم)",
+                        "Kinetic Drift (خلیسکانی دراماتیك)"
+                    ];
+                    current: root.data.animation;
+                    placeholder: "None (هیچ)";
+                    changed(index) => { root.animation-changed(index); }
+                }
+            }
+
+            DialogRow {
+                label: I18n.t("captions.highlight");
+                Select {
+                    options: [
+                        "Off (ناچالاک)",
+                        "Rounded (گۆڕاو)",
+                        "Square (چوارگۆشە)",
+                        "Underline (هێڵی)",
+                        "Highlight (مارکەر)",
+                        "Liquid Glass White (شووشەی شلی سپی)",
+                        "Liquid Glass Dark (شووشەی شلی تاریک)"
+                    ];
+                    current: root.data.highlight-style;
+                    placeholder: "Off (ناچالاک)";
+                    changed(index) => { root.highlight-changed(index); }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                padding-top: 4px;
+
+                Button {
+                    label: I18n.t("captions.exportSrt");
+                    glyph: Glyph.export;
+                    ghost: true;
+                    clicked => { root.export-srt(); }
+                }
+
+                Button {
+                    label: I18n.t("captions.exportAss");
+                    glyph: Glyph.export;
+                    ghost: true;
+                    clicked => { root.export-ass(); }
                 }
             }
 
@@ -332,7 +468,7 @@ export component CaptionsDialog inherits Modal {
                 large: true;
                 glyph: Glyph.text-mark;
                 label: root.from-voice ? I18n.t("captions.generateCaptions") : I18n.t("captions.addCaptions");
-                enabled: root.from-voice ? root.data.ready && root.data.source >= 0 : root.draft != "";
+                enabled: root.from-voice ? (root.data.is-kurdish-ai ? root.data.source >= 0 : root.data.ready && root.data.source >= 0) : root.draft != "";
                 clicked => { root.begin(); }
             }
         }

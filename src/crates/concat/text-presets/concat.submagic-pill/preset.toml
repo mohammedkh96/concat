@@ -1,0 +1,19 @@
+id = "concat.submagic-pill"
+name = "Submagic Highlight"
+language = "Latin"
+order = 50
+offsetY = 0.32
+
+[style]
+content = "VIRAL CAPTIONS"
+fontFamily = "Rabar_021"
+fontWeight = 900
+fontSize = 0.065
+color = "#ffffff"
+strokeWidth = 0.008
+strokeColor = "#000000"
+shadow = true
+background = "#10b981"
+backgroundRadius = 0.035
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.02

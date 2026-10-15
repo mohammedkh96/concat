@@ -242,6 +242,7 @@ impl MediaBin {
             MediaFilter::Images => imported && item.kind == model::MediaKind::Image,
             MediaFilter::Speech => item.origin == Some(MediaOrigin::Speech),
             MediaFilter::Processed => item.origin == Some(MediaOrigin::Processed),
+            MediaFilter::Sfx => false,
         }
     }
 

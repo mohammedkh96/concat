@@ -1,0 +1,20 @@
+id = "concat.moonshot-afterglow"
+name = "Moonshot Afterglow Sunset"
+language = "Latin"
+order = 121
+offsetY = 0.34
+
+[style]
+content = "AFTERGLOW DUSK SKY"
+fontFamily = "Hanken Grotesk"
+fontWeight = 900
+fontSize = 0.052
+italic = false
+color = "#fecdd3"
+strokeWidth = 0.003
+strokeColor = "#4c0519"
+shadow = true
+background = "#4c0519e6"
+backgroundRadius = 0.035
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02

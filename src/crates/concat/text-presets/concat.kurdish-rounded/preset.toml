@@ -1,0 +1,17 @@
+id = "concat.kurdish-rounded"
+name = "Kurdish rounded"
+language = "Kurdish"
+order = 33
+offsetY = 0.35
+
+[style]
+content = "ژێرنووسی کوردی"
+fontFamily = "Rabar_022"
+fontWeight = 700
+fontSize = 0.05
+color = "#ffffff"
+background = "#18181be6"
+backgroundRadius = 0.015
+backgroundPaddingX = 0.025
+backgroundPaddingY = 0.012
+shadow = false

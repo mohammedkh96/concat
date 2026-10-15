@@ -1,0 +1,20 @@
+id = "concat.moonshot-kumar"
+name = "Moonshot Kumar (Behind Head)"
+language = "Latin"
+order = 85
+offsetY = -0.22
+
+[style]
+content = "KUMAR HERO"
+fontFamily = "DM Serif Display"
+fontWeight = 900
+fontSize = 0.088
+italic = false
+color = "#e2382a"
+strokeWidth = 0.003
+strokeColor = "#000000"
+shadow = true
+background = ""
+backgroundRadius = 0.0
+backgroundPaddingX = 0.0
+backgroundPaddingY = 0.0

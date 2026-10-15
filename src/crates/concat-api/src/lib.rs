@@ -1095,6 +1095,7 @@ mod tests {
                     style: None,
                     duration: None,
                     offset_y: None,
+                    keys: Vec::new(),
                 }),
             }
         );
@@ -1248,6 +1249,7 @@ mod tests {
                 style: None,
                 duration: Some(3.0),
                 offset_y: None,
+                keys: Vec::new(),
             }),
         }));
         let undone = view(ok(api.dispatch(Request::EditUndo { path: path.clone() })));

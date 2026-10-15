@@ -1,0 +1,20 @@
+id = "concat.moonshot-feed"
+name = "Moonshot Feed Overlay"
+language = "Latin"
+order = 105
+offsetY = 0.35
+
+[style]
+content = "tap to see more..."
+fontFamily = "Inter"
+fontWeight = 600
+fontSize = 0.045
+italic = false
+color = "#ffffff"
+strokeWidth = 0.001
+strokeColor = "#000000"
+shadow = true
+background = "#00000099"
+backgroundRadius = 0.03
+backgroundPaddingX = 0.035
+backgroundPaddingY = 0.015

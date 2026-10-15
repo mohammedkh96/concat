@@ -1,0 +1,20 @@
+id = "concat.moonshot-ml-aura"
+name = "Moonshot Blue Muse Aura"
+language = "Latin"
+order = 120
+offsetY = 0.34
+
+[style]
+content = "BLUE MUSE ATMOSPHERE"
+fontFamily = "Montserrat"
+fontWeight = 800
+fontSize = 0.05
+italic = false
+color = "#38bdf8"
+strokeWidth = 0.003
+strokeColor = "#1e1b4b"
+shadow = true
+background = "#1e1b4be8"
+backgroundRadius = 0.03
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02

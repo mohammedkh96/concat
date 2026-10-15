@@ -1,0 +1,20 @@
+id = "concat.moonshot-cool-girl"
+name = "Moonshot Cool Girl"
+language = "Latin"
+order = 98
+offsetY = 0.34
+
+[style]
+content = "that cool girl aesthetic ✨"
+fontFamily = "DM Serif Display"
+fontWeight = 400
+fontSize = 0.052
+italic = true
+color = "#fdf4ff"
+strokeWidth = 0.002
+strokeColor = "#701a75"
+shadow = true
+background = "#701a75a6"
+backgroundRadius = 0.03
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.018

@@ -1,0 +1,19 @@
+id = "concat.feature-pin"
+name = "Luxury Feature Pin"
+language = "Latin"
+order = 60
+offsetY = -0.25
+
+[style]
+content = "✦ INFINITY EDGE POOL"
+fontFamily = "Inter"
+fontWeight = 800
+fontSize = 0.048
+color = "#ffffff"
+strokeWidth = 0.005
+strokeColor = "#06b6d4"
+shadow = true
+background = "#083344ea"
+backgroundRadius = 0.028
+backgroundPaddingX = 0.038
+backgroundPaddingY = 0.018

@@ -1,0 +1,19 @@
+id = "concat.kurdish-modern"
+name = "Kurdish Modern Media"
+language = "Kurdish"
+order = 78
+offsetY = 0.32
+
+[style]
+content = "میدیای سەردەم و ڕووداوەکان"
+fontFamily = "Rabar_040"
+fontWeight = 900
+fontSize = 0.062
+color = "#ffffff"
+strokeWidth = 0.005
+strokeColor = "#8b5cf6"
+shadow = true
+background = "#2e1065e8"
+backgroundRadius = 0.03
+backgroundPaddingX = 0.042
+backgroundPaddingY = 0.02

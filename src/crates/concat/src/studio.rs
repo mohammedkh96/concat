@@ -902,6 +902,7 @@ pub struct Studio {
     pub project_sheet: crate::panes::project::ProjectPane,
     pub captions: crate::panes::captions::CaptionsPane,
     pub speech: crate::panes::speech::SpeechPane,
+    pub downloader: crate::panes::downloader::DownloaderPane,
     /// A file from the library lent the monitor and the speakers; see
     /// `crate::source`.
     pub source: Option<crate::source::Source>,
@@ -2057,6 +2058,7 @@ impl Studio {
             project_sheet: crate::panes::project::ProjectPane::default(),
             captions: crate::panes::captions::CaptionsPane::default(),
             speech: crate::panes::speech::SpeechPane::default(),
+            downloader: crate::panes::downloader::DownloaderPane::default(),
             source: None,
             meters: crate::meters::MeterFeed::default(),
             voiceover: crate::panes::voiceover::VoiceoverPane::default(),
@@ -2586,28 +2588,18 @@ impl Studio {
             // Titles, painted to pictures and rejoined; see concat-host's titles.
             if self.echo.is_some() {
                 // A change in flight: the titles are painted in memory at
-                // the monitor's size and handed to it as pixels - no file
-                // per pointer step - and the blocks they report are scaled
-                // back up to the output's terms, which the stage measures
-                // in. Nothing is written until the change is committed.
-                let (shown_w, shown_h) = crate::panes::monitor::MonitorPane::frame_size(
-                    self.quality_of(),
-                    (width, height),
-                );
-                let scale = f64::from(shown_w) / f64::from(width);
-                let up = |px: u32| (f64::from(px) / scale).round() as u32;
-                let up_off = |px: i32| (f64::from(px) / scale).round() as i32;
+                // full output resolution and handed to the monitor as pixels -
+                // no file per pointer step. Keeping full output resolution
+                // prevents blurry text when monitor preview quality is Half
+                // or Quarter. Nothing is written until the change is committed.
                 for title in self
                     .host
                     .titles
-                    .clips_live(self.project(), shown_w, shown_h)
+                    .clips_live(self.project(), width, height)
                 {
                     self.title_blocks.insert(
                         title.clip_id,
-                        (
-                            (up(title.block.0), up(title.block.1)),
-                            (up_off(title.offset.0), up_off(title.offset.1)),
-                        ),
+                        (title.block, title.offset),
                     );
                     if let Some(frame) = title.frame {
                         self.host
@@ -3457,6 +3449,7 @@ impl Studio {
             duration: Some(duration),
             offset_y,
             above: true,
+            keys: Vec::new(),
         };
         match font {
             Some((family, path)) => self.apply(Command::Batch {
@@ -3541,6 +3534,90 @@ impl Studio {
     pub fn place_filter_layer(&mut self, id: &str, label: &str) {
         self.audition = None;
         self.place_at_playhead(&format!("filter:{id}:{label}"));
+    }
+
+    /// Previews a sound effect using system playback without inserting into project.
+    pub fn audition_sfx(&mut self, sfx_id: &str) {
+        let Some(sfx) = crate::sound_effects::find_sfx(sfx_id) else {
+            return;
+        };
+        let Ok(path) = crate::sound_effects::ensure_sfx_on_disk(&self.host.dirs, sfx) else {
+            return;
+        };
+        self.notify(&format!("Playing: {}", sfx.name), false);
+        #[cfg(target_os = "macos")]
+        {
+            let _ = std::process::Command::new("afplay").arg(&path).spawn();
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let _ = std::process::Command::new("paplay")
+                .arg(&path)
+                .spawn()
+                .or_else(|_| std::process::Command::new("aplay").arg(&path).spawn());
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::process::Command::new("powershell")
+                .args(["-NoProfile", "-NonInteractive", "-Command", &format!("(New-Object Media.SoundPlayer '{}').Play()", path.display())])
+                .spawn();
+        }
+    }
+
+    /// Inserts a built-in sound effect into the project at the playhead.
+    pub fn insert_sfx(&mut self, sfx_id: &str) {
+        if self.session.is_none() {
+            return;
+        }
+        let Some(sfx) = crate::sound_effects::find_sfx(sfx_id) else {
+            return;
+        };
+        let path = match crate::sound_effects::ensure_sfx_on_disk(&self.host.dirs, sfx) {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("Failed to extract SFX: {e}");
+                return;
+            }
+        };
+
+        let path_str = path.to_string_lossy().to_string();
+        let existing = self
+            .project()
+            .media
+            .iter()
+            .find(|m| m.path == path_str)
+            .map(|m| m.id.clone());
+
+        let playhead = f64::from(self.playhead.max(0.0));
+        let media_id = if let Some(media_id) = existing {
+            Some(media_id)
+        } else {
+            match media::probe(&path_str) {
+                Ok(summary) => {
+                    let item = summary.to_new_media();
+                    self.apply(Command::AddMedia { item });
+                    self.project()
+                        .media
+                        .iter()
+                        .find(|m| m.path == path_str)
+                        .map(|m| m.id.clone())
+                }
+                Err(err) => {
+                    log::error!("Failed to probe SFX {path_str}: {err:?}");
+                    None
+                }
+            }
+        };
+
+        if let Some(media_id) = media_id {
+            let created = self.apply(Command::AddClipAtFirstFree {
+                media_id,
+                start: playhead,
+            });
+            if let Some(id) = created {
+                self.selection = vec![id];
+            }
+        }
     }
 
     /// A catalogue filter or effect, applied to the selected clip's chain.
@@ -4991,7 +5068,12 @@ impl Studio {
             let shape = clip.shape.clone().unwrap_or_default();
             let side = shape.size.clamp(0.01, 2.0) * height;
             let (w, h) = match shape.kind {
-                model::ShapeKind::Square | model::ShapeKind::Circle => (side, side),
+                model::ShapeKind::Square
+                | model::ShapeKind::Circle
+                | model::ShapeKind::Star
+                | model::ShapeKind::Heart
+                | model::ShapeKind::Bolt
+                | model::ShapeKind::Check => (side, side),
                 model::ShapeKind::Triangle => (side, side * 0.866),
                 model::ShapeKind::Parallelogram | model::ShapeKind::Trapezoid => (side, side * 0.6),
                 model::ShapeKind::Line => (side, shape.stroke_width * height),
@@ -6869,6 +6951,7 @@ impl Studio {
                     style: source.text.clone(),
                     duration: Some(source.duration),
                     offset_y: Some(source.offset_y),
+                    keys: source.keys.clone(),
                 },
             );
         }
@@ -7332,6 +7415,11 @@ impl Studio {
                 let mut pane = std::mem::take(&mut self.speech);
                 pane.update(msg, self);
                 self.speech = pane;
+            }
+            crate::panes::Msg::Downloader(msg) => {
+                let mut pane = std::mem::take(&mut self.downloader);
+                pane.update(msg, self);
+                self.downloader = pane;
             }
             crate::panes::Msg::Voiceover(msg) => {
                 let mut pane = std::mem::take(&mut self.voiceover);
@@ -9464,6 +9552,7 @@ impl Studio {
                 .collect(),
         );
         app.set_captions(self.captions.data(self));
+        app.set_downloader(self.downloader.to_slint());
         let voices = installed(&self.settings.voices);
         sync(
             &models.speech_models,

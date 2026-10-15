@@ -1,0 +1,19 @@
+id = "concat.vintage-film"
+name = "Vintage 8mm Film"
+language = "Latin"
+order = 77
+offsetY = 0.32
+
+[style]
+content = "ROLL #04 • 1984 ARCHIVE"
+fontFamily = "Black Ops One"
+fontWeight = 400
+fontSize = 0.048
+color = "#fef08a"
+strokeWidth = 0.005
+strokeColor = "#422006"
+shadow = true
+background = "#292524f0"
+backgroundRadius = 0.012
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.018

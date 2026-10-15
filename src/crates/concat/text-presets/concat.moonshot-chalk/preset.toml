@@ -1,0 +1,20 @@
+id = "concat.moonshot-chalk"
+name = "Moonshot Blackboard Chalk"
+language = "Latin"
+order = 106
+offsetY = 0.32
+
+[style]
+content = "BLACKBOARD CHALK NOTE"
+fontFamily = "Caveat Brush"
+fontWeight = 700
+fontSize = 0.065
+italic = false
+color = "#f1f5f9"
+strokeWidth = 0.002
+strokeColor = "#94a3b8"
+shadow = true
+background = "#1e293be6"
+backgroundRadius = 0.015
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02

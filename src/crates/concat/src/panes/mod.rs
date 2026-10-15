@@ -15,6 +15,7 @@
 //! export sheet is the first, and the shape the rest follow.
 
 pub mod captions;
+pub mod downloader;
 pub mod export;
 pub mod media_bin;
 pub mod monitor;
@@ -38,6 +39,8 @@ pub enum Msg {
     Captions(captions::CaptionsMsg),
     /// To the speech sheet.
     Speech(speech::SpeechMsg),
+    /// To the media downloader sheet.
+    Downloader(downloader::DownloaderMsg),
     /// To the missing media dialog.
     Relink(relink::RelinkMsg),
     /// To the project sheet.

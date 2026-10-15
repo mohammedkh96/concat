@@ -24,7 +24,7 @@ export enum MediaKind { video, audio, image }
 /// the row that is highlighted when every import is on, which is why it is a
 /// value here and not the absence of one. `speech` is the Generated group's
 /// shelf: what the editor read aloud, which the Media rows leave out.
-export enum MediaFilter { all, video, audio, images, speech, processed }
+export enum MediaFilter { all, video, audio, images, speech, processed, sfx }
 
 /// The library file lent to the monitor and the speakers, published by
 /// Rust (see concat's source.rs): its card shows how far it has played,
@@ -1098,6 +1098,7 @@ component CatalogueCard inherits Rectangle {
 // neighbours on the other pages.
 component TextPage inherits Rectangle {
     callback add-text();
+    callback open-captions();
 
     opacity: drag.dragging ? 0.45 : 1.0;
 
@@ -1163,6 +1164,57 @@ component TextPage inherits Rectangle {
                 text: I18n.t("mediaPane.defaultTitle");
                 color: Theme.fg-muted;
                 font-size: Theme.fs-sm;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+    }
+
+    // Card 2: Auto Captions (AI Voice to Text)
+    if root.cols >= 2: Rectangle {
+        x: root.card-w + root.gap;
+        y: 0;
+        width: root.card-w;
+        height: root.height;
+
+        caption-touch := TouchArea {
+            x: 0;
+            y: 0;
+            width: root.card-w;
+            height: root.height;
+            mouse-cursor: pointer;
+            clicked => { root.open-captions(); }
+
+            caption-tile := Rectangle {
+                y: 0;
+                height: root.card-w * 9 / 16;
+                border-radius: Theme.r;
+                background: Theme.well;
+                border-width: 1px;
+                border-color: caption-touch.has-hover ? Theme.accent : Theme.line;
+
+                HorizontalLayout {
+                    alignment: center;
+                    VerticalLayout {
+                        alignment: center;
+                        Icon {
+                            glyph: Glyph.text-mark;
+                            size: 22px;
+                            tint: Theme.accent;
+                        }
+                    }
+                }
+            }
+
+            Text {
+                x: 0;
+                y: caption-tile.height + 4px;
+                width: root.card-w;
+                height: 14px;
+                text: I18n.t("captions.captions");
+                color: Theme.accent;
+                font-size: Theme.fs-sm;
+                font-weight: 700;
                 vertical-alignment: center;
                 overflow: elide;
             }
@@ -1613,6 +1665,10 @@ export component ShapeGrid inherits Rectangle {
         { id: "trapezoid", label: I18n.t("mediaPane.shapeTrapezoid"), commands: "M8 5h8l5 14H3z" },
         { id: "line", label: I18n.t("mediaPane.shapeLine"), commands: "M3 12h18" },
         { id: "arrow", label: I18n.t("mediaPane.shapeArrow"), commands: "M3 12h18 M15 6l6 6-6 6" },
+        { id: "star", label: I18n.t("mediaPane.shapeStar"), commands: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" },
+        { id: "heart", label: I18n.t("mediaPane.shapeHeart"), commands: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" },
+        { id: "bolt", label: I18n.t("mediaPane.shapeBolt"), commands: "M13 2L3 14h9l-1 8 10-12h-9l1-8z" },
+        { id: "check", label: I18n.t("mediaPane.shapeCheck"), commands: "M20 6L9 17l-5-5" },
     ];
 
     property <length> gap: 8px;
@@ -1634,6 +1690,152 @@ export component ShapeGrid inherits Rectangle {
         shape: entry;
 
         placed => { root.placed(entry.id, entry.label); }
+    }
+}
+
+export struct SfxCardData {
+    id: string,
+    name: string,
+    category: string,
+    duration: string,
+}
+
+component SfxCard inherits Rectangle {
+    in property <SfxCardData> sfx;
+    callback audition();
+    callback placed();
+
+    border-radius: Theme.r;
+    background: touch.has-hover ? Theme.field-hover : Theme.field;
+    border-width: 1px;
+    border-color: touch.has-hover ? Theme.line-strong : Theme.line;
+
+    animate background { duration: 120ms; easing: cubic-bezier(0.4, 0, 0.2, 1); }
+
+    HorizontalLayout {
+        padding: 8px;
+        spacing: 10px;
+        alignment: center;
+
+        // Play / Audition button
+        play-btn := Rectangle {
+            width: 32px;
+            height: 32px;
+            border-radius: 16px;
+            background: play-touch.has-hover ? Theme.accent : Theme.panel;
+            border-width: 1px;
+            border-color: play-touch.has-hover ? Theme.accent : Theme.line;
+
+            Icon {
+                glyph: Glyph.music;
+                size: 14px;
+                tint: play-touch.has-hover ? Theme.on-accent : Theme.fg;
+            }
+
+            play-touch := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.audition(); }
+            }
+        }
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 2px;
+            alignment: center;
+
+            Text {
+                text: root.sfx.name;
+                color: Theme.fg;
+                font-size: Theme.fs-sm;
+                font-weight: Theme.weight-title;
+                overflow: elide;
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+
+                Text {
+                    text: root.sfx.category;
+                    color: Theme.accent;
+                    font-size: Theme.fs-xs;
+                }
+
+                Text {
+                    text: "• " + root.sfx.duration;
+                    color: Theme.fg-muted;
+                    font-size: Theme.fs-xs;
+                }
+            }
+        }
+
+        // Add to Timeline button
+        add-btn := Rectangle {
+            width: 28px;
+            height: 28px;
+            border-radius: Theme.r-sm;
+            background: add-touch.has-hover ? Theme.field-hover : Theme.panel;
+            border-width: 1px;
+            border-color: Theme.line;
+
+            Icon {
+                glyph: Glyph.plus;
+                size: 14px;
+                tint: add-touch.has-hover ? Theme.accent : Theme.fg-muted;
+            }
+
+            add-touch := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.placed(); }
+            }
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        double-clicked => { root.placed(); }
+    }
+}
+
+export component SfxGrid inherits Rectangle {
+    callback placed(id: string);
+    callback audition(id: string);
+
+    property <[SfxCardData]> sfx-list: [
+        { id: "whoosh-gust", name: "Whoosh Wind Gust", category: "Transitions", duration: "0.7s" },
+        { id: "whoosh-fire", name: "Fire Whoosh", category: "Transitions", duration: "1.8s" },
+        { id: "whoosh-breath", name: "Airy Breath Swoosh", category: "Transitions", duration: "1.2s" },
+        { id: "transition-stinger", name: "Dust Storm Stinger", category: "Transitions", duration: "1.5s" },
+        { id: "impact-deep", name: "Deep Cinematic Impact", category: "Impacts", duration: "2.4s" },
+        { id: "impact-bass-drop", name: "Heavy Bass Drop", category: "Impacts", duration: "1.8s" },
+        { id: "impact-crisis", name: "Crisis Rattling Hit", category: "Impacts", duration: "0.8s" },
+        { id: "impact-sub-bass", name: "Stuttering Sub Bass", category: "Impacts", duration: "1.1s" },
+        { id: "impact-drum-sweeper", name: "Cinematic Drum Sweeper", category: "Impacts", duration: "0.5s" },
+        { id: "impact-percussion", name: "Sub Drop Percussion", category: "Impacts", duration: "1.2s" },
+        { id: "game-level-up", name: "Level Up Complete", category: "Game & UI", duration: "0.6s" },
+        { id: "game-fireball", name: "Fireball Spell Element", category: "Game & UI", duration: "0.7s" },
+        { id: "ui-ping", name: "Ping Tone Reverberant", category: "Game & UI", duration: "1.2s" },
+        { id: "foley-marker-sketch", name: "Marker Sketch Drawing", category: "Game & UI", duration: "2.8s" },
+        { id: "foley-car-skid", name: "Car Brake Skid Turn", category: "Foley", duration: "1.9s" },
+        { id: "foley-ceramics-shatter", name: "Ceramics Shatter Shards", category: "Foley", duration: "1.4s" },
+        { id: "foley-door-shut", name: "Door Shut Slam", category: "Foley", duration: "1.3s" },
+        { id: "logo-ethernal", name: "Ethernal Brand Opener", category: "Foley", duration: "2.9s" },
+    ];
+
+    property <length> gap: 6px;
+    property <length> card-h: 52px;
+    property <int> count: root.sfx-list.length;
+
+    height: root.count > 0 ? root.count * (root.card-h + root.gap) : 0px;
+
+    for entry[index] in root.sfx-list: SfxCard {
+        x: 0px;
+        y: index * (root.card-h + root.gap);
+        width: root.width;
+        height: root.card-h;
+        sfx: entry;
+
+        audition => { root.audition(entry.id); }
+        placed => { root.placed(entry.id); }
     }
 }
 
@@ -1691,6 +1893,9 @@ export component MediaPane inherits Rectangle {
     changed jump-token => { root.tab = 0; }
 
     callback import-media();
+    callback download-media();
+    callback audition-sfx(id: string);
+    callback insert-sfx(id: string);
     callback filter-changed(filter: MediaFilter);
     /// The sort dropdown beside the import button picked a new order.
     callback sort-changed(index: int);
@@ -1727,6 +1932,8 @@ export component MediaPane inherits Rectangle {
     in property <[string]> transition-groups;
     /// Text page: add a title at the playhead, in the look `preset` names.
     callback add-text(preset: string);
+    /// Text page: open the captions dialog.
+    callback open-captions();
     /// Stickers page: add the figure `shape` names at the playhead, as a
     /// clip called `label`.
     callback add-shape(shape: string, label: string);
@@ -1765,6 +1972,7 @@ export component MediaPane inherits Rectangle {
     property <length> strip-floor: Math.min(0px, strip.width - strip.content-width);
     property <bool> categories-open: true;
     property <bool> generated-open: true;
+    property <bool> library-open: true;
     property <bool> text-open: true;
     /// 0 = Titles, 1 = Styles, 2 = Languages
     property <int> text-category;
@@ -2080,6 +2288,21 @@ export component MediaPane inherits Rectangle {
                             current: root.filter == MediaFilter.processed;
                             clicked => { root.narrow(MediaFilter.processed); }
                         }
+
+                        // Built-in Sound Effects Library
+                        CategoryHeading {
+                            height: 26px;
+                            title: I18n.t("mediaPane.libraryHeader");
+                            open: root.library-open;
+                            toggled => { root.library-open = !root.library-open; }
+                        }
+                        if root.library-open: CategoryRow {
+                            height: 24px;
+                            label: I18n.t("mediaPane.soundEffects");
+                            count: 18;
+                            current: root.filter == MediaFilter.sfx;
+                            clicked => { root.narrow(MediaFilter.sfx); }
+                        }
                     }
 
                     if root.tab == 1: VerticalLayout {
@@ -2095,6 +2318,12 @@ export component MediaPane inherits Rectangle {
                             label: I18n.t("mediaPane.titles");
                             current: root.text-category == 0;
                             clicked => { root.text-category = 0; }
+                        }
+                        if root.text-open: CategoryRow {
+                            height: 24px;
+                            label: I18n.t("captions.captions");
+                            current: false;
+                            clicked => { root.open-captions(); }
                         }
                         if root.text-open: CategoryRow {
                             height: 24px;
@@ -2250,6 +2479,14 @@ export component MediaPane inherits Rectangle {
                         busy: root.importing;
                         clicked => { root.import-media(); }
                     }
+                    ImportButton {
+                        height: Theme.h;
+                        horizontal-stretch: 0;
+                        label: I18n.t("downloader.button");
+                        glyph: Glyph.download;
+                        busy: false;
+                        clicked => { root.download-media(); }
+                    }
                     Rectangle { horizontal-stretch: 1; }
                     // Sort, and sort only: narrowing the bin by kind is the
                     // sidebar's, where each kind carries its count and the
@@ -2324,7 +2561,19 @@ export component MediaPane inherits Rectangle {
                     }
                 }
 
-                if root.tab == 0 && root.items.length == 0: Empty {
+                if root.tab == 0 && root.filter == MediaFilter.sfx: HorizontalLayout {
+                    padding: 8px;
+                    PaneScroll {
+                        horizontal-stretch: 1;
+                        sfx-view := SfxGrid {
+                            width: parent.width;
+                            audition(id) => { root.audition-sfx(id); }
+                            placed(id) => { root.insert-sfx(id); }
+                        }
+                    }
+                }
+
+                if root.tab == 0 && root.filter != MediaFilter.sfx && root.items.length == 0: Empty {
                     glyph: Glyph.import;
                     text: root.filter == MediaFilter.speech
                         ? I18n.t("mediaPane.nothingReadAloudYet")
@@ -2335,7 +2584,7 @@ export component MediaPane inherits Rectangle {
                         : "Drop video and audio files anywhere in the window to import them.";
                 }
 
-                if root.tab == 0 && root.items.length > 0: HorizontalLayout {
+                if root.tab == 0 && root.filter != MediaFilter.sfx && root.items.length > 0: HorizontalLayout {
                     padding-left: 8px;
                     padding-right: 8px;
                     padding-bottom: 8px;
@@ -2375,6 +2624,7 @@ export component MediaPane inherits Rectangle {
                     TextPage {
                         horizontal-stretch: 1;
                         add-text => { root.add-text("default"); }
+                        open-captions => { root.open-captions(); }
                     }
                 }
 

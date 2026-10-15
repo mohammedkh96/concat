@@ -1,0 +1,256 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Jareer and Concat contributors
+
+import { I18n } from "../i18n.slint";
+import { Theme } from "../theme/theme.slint";
+import { Glyph, Icon } from "../icons.slint";
+import { Button, CopyChip, DialogRow, DialogSection, Modal, Progress } from "../primitives/modal.slint";
+import { SegmentedControl } from "../primitives/segmented-control.slint";
+import { Switch } from "../inspector/controls.slint";
+
+// Universal Media Downloader Sheet:
+// Downloads videos and audio from YouTube, TikTok, Instagram, Twitter/X,
+// Facebook, and direct media URLs, saving them directly to the project's
+// media bin and optionally placing them on the timeline.
+
+export struct DownloaderSheetData {
+    open: bool,
+    url: string,
+    /// Detected platform: "YouTube", "TikTok", "Instagram", "Twitter", "Facebook", "Direct"
+    platform: string,
+    /// 0 = "1080p MP4", 1 = "4K MP4", 2 = "MP3 Audio", 3 = "WAV Audio"
+    format: int,
+    insert-timeline: bool,
+    running: bool,
+    progress: float,
+    status: string,
+    error: string,
+}
+
+export component DownloaderDialog inherits Modal {
+    in property <DownloaderSheetData> data;
+
+    callback url-edited(string);
+    callback format-changed(int);
+    callback insert-timeline-toggled(bool);
+    callback quick-preset(string);
+    callback begin();
+    callback cancel();
+
+    title: I18n.t("downloader.title");
+    glyph: Glyph.download;
+    open: root.data.open;
+    surface-width: 580px;
+    dismissable: !root.data.running;
+
+    VerticalLayout {
+        spacing: 16px;
+
+        DialogSection {
+            title: I18n.t("downloader.mediaSource");
+
+            // URL input with clear / paste
+            DialogRow {
+                label: I18n.t("downloader.urlLabel");
+
+                HorizontalLayout {
+                    spacing: 8px;
+
+                    url-box := Rectangle {
+                        height: 34px;
+                        border-radius: Theme.r;
+                        background: Theme.field;
+                        border-width: 1px;
+                        border-color: input.has-focus ? Theme.accent : Theme.line;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            alignment: center;
+
+                            input := TextInput {
+                                text: root.data.url;
+                                color: Theme.fg;
+                                font-size: Theme.fs;
+                                vertical-alignment: center;
+                                enabled: !root.data.running;
+                                single-line: true;
+                                edited => { root.url-edited(self.text); }
+                            }
+                        }
+                    }
+
+                    if root.data.url != "" && !root.data.running: Rectangle {
+                        width: 34px;
+                        height: 34px;
+                        border-radius: Theme.r;
+                        background: clear-touch.has-hover ? Theme.field-hover : Theme.field;
+
+                        Icon {
+                            glyph: Glyph.close;
+                            size: 14px;
+                            tint: Theme.fg-muted;
+                        }
+
+                        clear-touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.url-edited("");
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Platform detected badge & Quick test links
+            DialogRow {
+                label: I18n.t("downloader.detectedPlatform");
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+
+                    Rectangle {
+                        height: 24px;
+                        border-radius: 12px;
+                        background: root.data.platform == "YouTube" ? #ff000022
+                            : root.data.platform == "TikTok" ? #00f2fe22
+                            : root.data.platform == "Instagram" ? #e1306c22
+                            : root.data.platform == "Twitter" ? #1da1f222
+                            : root.data.platform == "Facebook" ? #1877f222
+                            : Theme.field;
+                        border-width: 1px;
+                        border-color: root.data.platform == "YouTube" ? #ff000088
+                            : root.data.platform == "TikTok" ? #00f2fe88
+                            : root.data.platform == "Instagram" ? #e1306c88
+                            : root.data.platform == "Twitter" ? #1da1f288
+                            : root.data.platform == "Facebook" ? #1877f288
+                            : Theme.line;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            alignment: center;
+
+                            Text {
+                                text: root.data.platform;
+                                color: root.data.platform == "YouTube" ? #ff4444
+                                    : root.data.platform == "TikTok" ? #00f2fe
+                                    : root.data.platform == "Instagram" ? #e1306c
+                                    : root.data.platform == "Twitter" ? #1da1f2
+                                    : root.data.platform == "Facebook" ? #1877f2
+                                    : Theme.fg-muted;
+                                font-size: Theme.fs-xs;
+                                font-weight: Theme.weight-title;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 24px;
+                        border-radius: 12px;
+                        background: sample-touch.has-hover ? Theme.field-hover : Theme.field;
+
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            alignment: center;
+
+                            Text {
+                                text: I18n.t("downloader.sampleBroll");
+                                color: Theme.accent;
+                                font-size: Theme.fs-xs;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        sample-touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.quick-preset("https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        DialogSection {
+            title: I18n.t("downloader.formatAndQuality");
+
+            DialogRow {
+                label: I18n.t("downloader.formatLabel");
+
+                SegmentedControl {
+                    options: [
+                        I18n.t("downloader.fmt1080p"),
+                        I18n.t("downloader.fmt4k"),
+                        I18n.t("downloader.fmtMp3"),
+                        I18n.t("downloader.fmtWav"),
+                    ];
+                    current: root.data.format;
+                    enabled: !root.data.running;
+                    changed(index) => { root.format-changed(index); }
+                }
+            }
+
+            DialogRow {
+                label: I18n.t("downloader.insertTimeline");
+
+                Switch {
+                    checked: root.data.insert-timeline;
+                    enabled: !root.data.running;
+                    toggled(on) => { root.insert-timeline-toggled(on); }
+                }
+            }
+        }
+
+        // Progress bar or status if downloading
+        if root.data.running: VerticalLayout {
+            spacing: 8px;
+
+            Progress {
+                value: root.data.progress;
+            }
+
+            Text {
+                text: root.data.status;
+                color: Theme.fg-muted;
+                font-size: Theme.fs-xs;
+                horizontal-alignment: center;
+            }
+        }
+
+        if root.data.error != "": Text {
+            text: root.data.error;
+            color: Theme.danger;
+            font-size: Theme.fs-xs;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+
+        // Actions: Cancel / Download
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: end;
+
+            if root.data.running: Button {
+                label: I18n.t("common.cancel");
+                clicked => { root.cancel(); }
+            }
+
+            if !root.data.running: Button {
+                label: I18n.t("common.close");
+                clicked => { root.closed(); }
+            }
+
+            if !root.data.running: Button {
+                label: I18n.t("downloader.startDownload");
+                primary: true;
+                enabled: root.data.url != "";
+                clicked => { root.begin(); }
+            }
+        }
+    }
+}

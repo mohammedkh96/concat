@@ -1,0 +1,20 @@
+id = "concat.moonshot-ml-blockbuster"
+name = "Moonshot Headliner Blockbuster"
+language = "Latin"
+order = 118
+offsetY = 0.3
+
+[style]
+content = "THE HEADLINER STORY\\nIN THEATERS EVERYWHERE"
+fontFamily = "Bebas Neue"
+fontWeight = 900
+fontSize = 0.062
+italic = false
+color = "#ffffff"
+strokeWidth = 0.005
+strokeColor = "#09090b"
+shadow = true
+background = "#000000a6"
+backgroundRadius = 0.015
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02

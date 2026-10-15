@@ -90,6 +90,7 @@ export enum Glyph {
     music,
     image,
     import,
+    download,
     transition,
     slot,
     settings,
@@ -362,6 +363,11 @@ export component Icon inherits Rectangle {
     if root.glyph == Glyph.import: Stroked {
         size: root.size; tint: root.tint; weight: root.weight;
         commands: "M12 15V3 M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5";
+    }
+
+    if root.glyph == Glyph.download: Stroked {
+        size: root.size; tint: root.tint; weight: root.weight;
+        commands: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3";
     }
 
     // lucide/upload

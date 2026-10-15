@@ -107,6 +107,10 @@ export component Seat inherits Rectangle {
             jump-token: Editor.media-jump-token;
 
             import-media => { Editor.import-media(); }
+            download-media => { Editor.download-media(); }
+            open-captions => { Editor.captions(); }
+            audition-sfx(id) => { Editor.audition-sfx(id); }
+            insert-sfx(id) => { Editor.insert-sfx(id); }
             filter-changed(filter) => { Editor.media-filter-changed(filter); }
             sort-changed(index) => { Editor.media-sort-changed(index); }
             floor-pressed => { Editor.blur(); }

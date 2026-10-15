@@ -266,7 +266,7 @@ const BUNDLED: [&[u8]; 5] = [
 /// (regular) weight: fontdb sets no variation axes. Kosugi Maru carries
 /// Japanese, Secular One and Rubik Scribble Hebrew. The window registers the
 /// same bytes for its preset cards (concat's fonts.rs).
-pub const BASE_FONTS: [&[u8]; 41] = [
+pub const BASE_FONTS: [&[u8]; 44] = [
     include_bytes!("../fonts/Inter-Regular.ttf"),
     include_bytes!("../fonts/Inter-SemiBold.ttf"),
     include_bytes!("../fonts/Inter-Bold.ttf"),
@@ -308,6 +308,9 @@ pub const BASE_FONTS: [&[u8]; 41] = [
     include_bytes!("../fonts/EmilysCandy-Regular.ttf"),
     include_bytes!("../fonts/MysteryQuest-Regular.ttf"),
     include_bytes!("../fonts/ZenTokyoZoo-Regular.ttf"),
+    include_bytes!("../fonts/Rabar_021.ttf"),
+    include_bytes!("../fonts/Rabar_022.ttf"),
+    include_bytes!("../fonts/Rabar_040.ttf"),
 ];
 
 /// Faces that used to be bundled and no longer are: a document that names
@@ -1559,6 +1562,14 @@ pub enum Figure {
     Line,
     /// A horizontal rule with a head on its right end.
     Arrow,
+    /// Five-pointed star.
+    Star,
+    /// Heart symbol.
+    Heart,
+    /// Lightning bolt.
+    Bolt,
+    /// Checkmark badge.
+    Check,
 }
 
 /// Everything about a shape's look, in the document's terms: sizes are
@@ -1649,7 +1660,7 @@ fn paint_shape(style: &ShapeStyle, width: u32, height: u32) -> Result<(Pixmap, B
 
     // The figure's own box, before any outline: (w, h), centred.
     let (w, h) = match style.figure {
-        Figure::Square | Figure::Circle => (size, size),
+        Figure::Square | Figure::Circle | Figure::Star | Figure::Heart | Figure::Bolt | Figure::Check => (size, size),
         Figure::Triangle => (size, size * 0.866),
         Figure::Parallelogram | Figure::Trapezoid => (size, size * 0.6),
         Figure::Line => (size, rule),
@@ -1701,9 +1712,6 @@ fn paint_shape(style: &ShapeStyle, width: u32, height: u32) -> Result<(Pixmap, B
             false
         }
         Figure::Arrow => {
-            // The head's arms are the box's half-height long, at 45°, so the
-            // head is as tall as the box says and the shaft stops short of
-            // the tip by what the stroke's round cap adds.
             let arm = h / 2.0;
             let tip = right - rule / 2.0;
             path.move_to(left + rule / 2.0, cy);
@@ -1711,6 +1719,47 @@ fn paint_shape(style: &ShapeStyle, width: u32, height: u32) -> Result<(Pixmap, B
             path.move_to(tip - arm, cy - arm);
             path.line_to(tip, cy);
             path.line_to(tip - arm, cy + arm);
+            false
+        }
+        Figure::Star => {
+            let r_outer = size / 2.0;
+            let r_inner = r_outer * 0.382;
+            for i in 0..10 {
+                let r = if i % 2 == 0 { r_outer } else { r_inner };
+                let angle = -std::f32::consts::FRAC_PI_2 + (i as f32) * std::f32::consts::PI / 5.0;
+                let px = cx + r * angle.cos();
+                let py = cy + r * angle.sin();
+                if i == 0 {
+                    path.move_to(px, py);
+                } else {
+                    path.line_to(px, py);
+                }
+            }
+            path.close();
+            true
+        }
+        Figure::Heart => {
+            let top_cleft_y = cy - h * 0.15;
+            path.move_to(cx, top_cleft_y);
+            path.cubic_to(cx - w * 0.35, top - h * 0.1, left - w * 0.05, cy + h * 0.1, cx, bottom);
+            path.cubic_to(right + w * 0.05, cy + h * 0.1, cx + w * 0.35, top - h * 0.1, cx, top_cleft_y);
+            path.close();
+            true
+        }
+        Figure::Bolt => {
+            path.move_to(cx + w * 0.08, top);
+            path.line_to(left + w * 0.12, cy + h * 0.06);
+            path.line_to(cx, cy + h * 0.06);
+            path.line_to(cx - w * 0.08, bottom);
+            path.line_to(right - w * 0.12, cy - h * 0.06);
+            path.line_to(cx, cy - h * 0.06);
+            path.close();
+            true
+        }
+        Figure::Check => {
+            path.move_to(left + w * 0.15, cy + h * 0.05);
+            path.line_to(cx - w * 0.05, bottom - h * 0.15);
+            path.line_to(right - w * 0.12, top + h * 0.15);
             false
         }
     };

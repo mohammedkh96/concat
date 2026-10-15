@@ -1,0 +1,20 @@
+id = "concat.moonshot-monument"
+name = "Moonshot Monument"
+language = "Latin"
+order = 95
+offsetY = 0.32
+
+[style]
+content = "MONUMENTAL HISTORIC"
+fontFamily = "DM Serif Display"
+fontWeight = 900
+fontSize = 0.064
+italic = false
+color = "#fafaf9"
+strokeWidth = 0.003
+strokeColor = "#1c1917"
+shadow = true
+background = "#1c1917ea"
+backgroundRadius = 0.01
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.022

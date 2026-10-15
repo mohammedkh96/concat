@@ -1,0 +1,19 @@
+id = "concat.netflix-cinematic"
+name = "Cinematic Chapter Intro"
+language = "Latin"
+order = 75
+offsetY = 0.0
+
+[style]
+content = "CHAPTER I : THE BEGINNING"
+fontFamily = "Hanken Grotesk"
+fontWeight = 600
+fontSize = 0.046
+color = "#fef3c7"
+strokeWidth = 0.003
+strokeColor = "#000000"
+shadow = true
+background = "#000000aa"
+backgroundRadius = 0.008
+backgroundPaddingX = 0.048
+backgroundPaddingY = 0.02

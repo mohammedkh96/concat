@@ -1,0 +1,20 @@
+id = "concat.kurdish-moonshot-arcade"
+name = "Kurdish Arcade (یارییە کلاسیکییەکان)"
+language = "Kurdish"
+order = 128
+offsetY = 0.33
+
+[style]
+content = "ئاستی یەکەم ئامادەیە"
+fontFamily = "Rabar_040"
+fontWeight = 900
+fontSize = 0.06
+italic = false
+color = "#4ade80"
+strokeWidth = 0.004
+strokeColor = "#a855f7"
+shadow = true
+background = "#1e1b4be8"
+backgroundRadius = 0.025
+backgroundPaddingX = 0.042
+backgroundPaddingY = 0.02

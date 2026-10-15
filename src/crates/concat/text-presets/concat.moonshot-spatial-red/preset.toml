@@ -1,0 +1,20 @@
+id = "concat.moonshot-spatial-red"
+name = "Moonshot Spatial Red"
+language = "Latin"
+order = 87
+offsetY = -0.24
+
+[style]
+content = "SPATIAL CRIMSON"
+fontFamily = "Anton"
+fontWeight = 900
+fontSize = 0.092
+italic = false
+color = "#ff334b"
+strokeWidth = 0.004
+strokeColor = "#ffffff"
+shadow = true
+background = ""
+backgroundRadius = 0.0
+backgroundPaddingX = 0.0
+backgroundPaddingY = 0.0

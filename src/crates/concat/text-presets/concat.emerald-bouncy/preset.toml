@@ -1,0 +1,19 @@
+id = "concat.emerald-bouncy"
+name = "TikBouncy Emerald"
+language = "Latin"
+order = 56
+offsetY = 0.32
+
+[style]
+content = "VIRAL EMERALD"
+fontFamily = "Inter"
+fontWeight = 900
+fontSize = 0.06
+color = "#ffffff"
+strokeWidth = 0.004
+strokeColor = "#34d399"
+shadow = true
+background = "#064e3be6"
+backgroundRadius = 0.035
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.02

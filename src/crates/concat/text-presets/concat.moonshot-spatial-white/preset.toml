@@ -1,0 +1,20 @@
+id = "concat.moonshot-spatial-white"
+name = "Moonshot Spatial White"
+language = "Latin"
+order = 89
+offsetY = -0.24
+
+[style]
+content = "SPATIAL WHITE"
+fontFamily = "Hanken Grotesk"
+fontWeight = 900
+fontSize = 0.088
+italic = false
+color = "#ffffff"
+strokeWidth = 0.005
+strokeColor = "#18181b"
+shadow = true
+background = ""
+backgroundRadius = 0.0
+backgroundPaddingX = 0.0
+backgroundPaddingY = 0.0

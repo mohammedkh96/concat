@@ -597,6 +597,10 @@ fn shape_style(style: &ShapeStyle) -> concat_text::ShapeStyle {
             ShapeKind::Trapezoid => Figure::Trapezoid,
             ShapeKind::Line => Figure::Line,
             ShapeKind::Arrow => Figure::Arrow,
+            ShapeKind::Star => Figure::Star,
+            ShapeKind::Heart => Figure::Heart,
+            ShapeKind::Bolt => Figure::Bolt,
+            ShapeKind::Check => Figure::Check,
         },
         size: style.size,
         fill: style.fill.clone(),
@@ -636,6 +640,7 @@ mod tests {
                 style: None,
                 duration: Some(3.0),
                 offset_y: None,
+                keys: Vec::new(),
             })
             .expect("a title is added")
             .created_id
@@ -681,6 +686,7 @@ mod tests {
                 style: None,
                 duration: Some(3.0),
                 offset_y: Some(0.3),
+                keys: Vec::new(),
             })
             .expect("a title is added")
             .created_id

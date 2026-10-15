@@ -1,0 +1,19 @@
+id = "concat.tech-unboxing"
+name = "Tech Specs Badge"
+language = "Latin"
+order = 74
+offsetY = 0.35
+
+[style]
+content = "M4 MAX • 128GB UNIFIED MEMORY • 4TB SSD"
+fontFamily = "Google Sans Code"
+fontWeight = 600
+fontSize = 0.038
+color = "#38bdf8"
+strokeWidth = 0.002
+strokeColor = "#0c4a6e"
+shadow = true
+background = "#030712f2"
+backgroundRadius = 0.015
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.016

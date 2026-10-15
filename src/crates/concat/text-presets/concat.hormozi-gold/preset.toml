@@ -1,0 +1,15 @@
+id = "concat.hormozi-gold"
+name = "Hormozi Gold Pop"
+language = "Latin"
+order = 51
+offsetY = 0.30
+
+[style]
+content = "THE BIG SECRET"
+fontFamily = "Rabar_021"
+fontWeight = 900
+fontSize = 0.075
+color = "#ffd700"
+strokeWidth = 0.012
+strokeColor = "#000000"
+shadow = true

@@ -1,0 +1,20 @@
+id = "concat.kurdish-moonshot-kumar"
+name = "Kurdish Kumar (پشتی کەسەکە)"
+language = "Kurdish"
+order = 125
+offsetY = -0.22
+
+[style]
+content = "سەردێڕی گەورە"
+fontFamily = "Rabar_040"
+fontWeight = 900
+fontSize = 0.088
+italic = false
+color = "#e2382a"
+strokeWidth = 0.004
+strokeColor = "#ffffff"
+shadow = true
+background = ""
+backgroundRadius = 0.0
+backgroundPaddingX = 0.0
+backgroundPaddingY = 0.0

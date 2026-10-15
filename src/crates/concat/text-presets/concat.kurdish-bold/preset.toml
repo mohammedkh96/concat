@@ -1,0 +1,15 @@
+id = "concat.kurdish-bold"
+name = "Kurdish bold"
+language = "Kurdish"
+order = 35
+offsetY = 0.35
+
+[style]
+content = "سەردێڕی کوردی"
+fontFamily = "Rabar_021"
+fontWeight = 800
+fontSize = 0.065
+color = "#f4f4f5"
+strokeWidth = 0.012
+strokeColor = "#09090b"
+shadow = true

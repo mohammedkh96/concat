@@ -1,0 +1,15 @@
+id = "concat.kurdish-caption"
+name = "Kurdish caption"
+language = "Kurdish"
+order = 32
+offsetY = 0.35
+
+[style]
+content = "سڵاو، بەخێربێن"
+fontFamily = "Rabar_021"
+fontWeight = 700
+fontSize = 0.055
+color = "#ffffff"
+strokeWidth = 0.008
+strokeColor = "#000000"
+shadow = true

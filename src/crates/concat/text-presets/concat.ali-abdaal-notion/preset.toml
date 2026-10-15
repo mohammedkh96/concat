@@ -1,0 +1,19 @@
+id = "concat.ali-abdaal-notion"
+name = "Notion Creator Minimalist"
+language = "Latin"
+order = 70
+offsetY = 0.32
+
+[style]
+content = "KEY TAKEAWAY #01"
+fontFamily = "Inter"
+fontWeight = 700
+fontSize = 0.048
+color = "#18181b"
+strokeWidth = 0.0
+strokeColor = "#000000"
+shadow = false
+background = "#f4f4f5f5"
+backgroundRadius = 0.016
+backgroundPaddingX = 0.04
+backgroundPaddingY = 0.016

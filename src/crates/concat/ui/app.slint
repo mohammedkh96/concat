@@ -28,6 +28,7 @@ import { RelinkDialog, RelinkData, MissingMediaItem } from "dialogs/relink.slint
 import { ConfirmData, ConfirmDialog } from "dialogs/confirm.slint";
 import { CaptionsDialog, CaptionsSheetData } from "dialogs/captions.slint";
 import { SpeechDialog, SpeechSheetData } from "dialogs/speech.slint";
+import { DownloaderDialog, DownloaderSheetData } from "dialogs/downloader.slint";
 import { DockDivider, DockSide, SeatBox } from "dock.slint";
 import { Editor } from "editor.slint";
 import { PaneKind, Panes } from "workspace/pane-switcher.slint";
@@ -62,7 +63,7 @@ export {
     SelectedClipData, SelectedTransitionData, StageGuideData, StageItemData, TextAlignment, TimelineTabData,
     TimelineTool, TrackData, TrackSize, MenuItemData, MenuRow, ExportData, ExportPhase, ModelData, SettingsData,
     ChipOption, RecentProjectData, StartData, SystemFactData, ToastData, ProjectSheetData,
-    CaptionsSheetData, SpeechSheetData,
+    CaptionsSheetData, SpeechSheetData, DownloaderSheetData,
 }
 
 export component App inherits Window {
@@ -117,7 +118,7 @@ export component App inherits Window {
     }
     property <bool> sheet-open: root.export.open || root.settings.open
         || root.project-sheet.open || root.captions.open || root.speech.open
-        || root.start.composing;
+        || root.downloader.open || root.start.composing;
     changed sheet-open => {
         if (!root.sheet-open) {
             keys.focus();
@@ -293,6 +294,13 @@ export component App inherits Window {
     callback captions-model-changed(index: int);
     callback captions-placement-changed(index: int);
     callback captions-size-changed(index: int);
+    callback captions-kurdish-ai-toggled(on: bool);
+    callback captions-kurdish-language-changed(index: int);
+    callback captions-translate-toggled(on: bool);
+    callback captions-animation-changed(index: int);
+    callback captions-highlight-changed(index: int);
+    callback captions-export-srt();
+    callback captions-export-ass();
     callback captions-begin();
     callback captions-cancel();
 
@@ -311,6 +319,15 @@ export component App inherits Window {
     callback speech-voice-changed(index: int);
     callback speech-model-changed(index: int);
     callback speech-speed-changed(value: float);
+
+    in property <DownloaderSheetData> downloader;
+    callback downloader-closed();
+    callback downloader-url-edited(string);
+    callback downloader-format-changed(int);
+    callback downloader-insert-timeline-toggled(bool);
+    callback downloader-quick-preset(string);
+    callback downloader-begin();
+    callback downloader-cancel();
     callback speech-quality-changed(index: int);
     callback speech-pauses-changed(value: float);
     callback speech-reference-start-changed(seconds: float);
@@ -836,6 +853,13 @@ export component App inherits Window {
         model-changed(index) => { root.captions-model-changed(index); }
         placement-changed(index) => { root.captions-placement-changed(index); }
         size-changed(index) => { root.captions-size-changed(index); }
+        kurdish-ai-toggled(on) => { root.captions-kurdish-ai-toggled(on); }
+        kurdish-language-changed(index) => { root.captions-kurdish-language-changed(index); }
+        translate-toggled(on) => { root.captions-translate-toggled(on); }
+        animation-changed(index) => { root.captions-animation-changed(index); }
+        highlight-changed(index) => { root.captions-highlight-changed(index); }
+        export-srt => { root.captions-export-srt(); }
+        export-ass => { root.captions-export-ass(); }
         begin => { root.captions-begin(); }
         cancel => { root.captions-cancel(); }
     }
@@ -867,6 +891,22 @@ export component App inherits Window {
         insert-tag(text, tag, at) => { return root.speech-insert-tag(text, tag, at); }
         begin => { root.speech-begin(); }
         cancel => { root.speech-cancel(); }
+    }
+
+    DownloaderDialog {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        data: root.downloader;
+
+        closed => { root.downloader-closed(); }
+        url-edited(url) => { root.downloader-url-edited(url); }
+        format-changed(index) => { root.downloader-format-changed(index); }
+        insert-timeline-toggled(on) => { root.downloader-insert-timeline-toggled(on); }
+        quick-preset(url) => { root.downloader-quick-preset(url); }
+        begin => { root.downloader-begin(); }
+        cancel => { root.downloader-cancel(); }
     }
 
     // Over the workspace and both sheets, under the menus. A tooltip has to

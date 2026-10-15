@@ -1,0 +1,20 @@
+id = "concat.moonshot-paper"
+name = "Moonshot Kraft Paper"
+language = "Latin"
+order = 107
+offsetY = 0.34
+
+[style]
+content = "KRAFT TORN PAPER"
+fontFamily = "Hanken Grotesk"
+fontWeight = 800
+fontSize = 0.05
+italic = false
+color = "#451a03"
+strokeWidth = 0.001
+strokeColor = "#78350f"
+shadow = true
+background = "#fed7aae6"
+backgroundRadius = 0.008
+backgroundPaddingX = 0.045
+backgroundPaddingY = 0.02
