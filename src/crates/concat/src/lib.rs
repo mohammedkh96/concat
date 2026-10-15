@@ -960,6 +960,15 @@ fn start(project: Option<std::path::PathBuf>, smoke: bool) -> Result<(), slint::
     editor.on_track_sized(on_window!(|state, row: i32, size: TrackSize| {
         state.set_lane_size(row, size);
     }));
+    editor.on_track_solo(on_window!(|state, row: i32| {
+        state.toggle_track_solo(row);
+    }));
+    editor.on_track_duplicate(on_window!(|state, row: i32| {
+        state.duplicate_track(row);
+    }));
+    editor.on_track_clear(on_window!(|state, row: i32| {
+        state.clear_track(row);
+    }));
     editor.on_track_removed(on_window!(|state, row: i32| {
         state.ask_remove_track(row);
     }));
@@ -1716,11 +1725,17 @@ fn start(project: Option<std::path::PathBuf>, smoke: bool) -> Result<(), slint::
     app.on_captions_highlight_changed(on_window!(|state, index: i32| {
         state.handle(Msg::Captions(CaptionsMsg::HighlightChanged(index)));
     }));
+    app.on_captions_import_subtitles(on_window!(|state| {
+        state.handle(Msg::Captions(CaptionsMsg::ImportSubtitles));
+    }));
     app.on_captions_export_srt(on_window!(|state| {
         state.handle(Msg::Captions(CaptionsMsg::ExportSrt));
     }));
     app.on_captions_export_ass(on_window!(|state| {
         state.handle(Msg::Captions(CaptionsMsg::ExportAss));
+    }));
+    app.on_captions_translate_timeline(on_window!(|state| {
+        state.handle(Msg::Captions(CaptionsMsg::TranslateTimelineCaptions));
     }));
     app.on_captions_begin(on_window!(|state| {
         state.handle(Msg::Captions(CaptionsMsg::Begin));

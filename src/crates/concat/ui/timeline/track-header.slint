@@ -133,6 +133,8 @@ component SizeMenu inherits Rectangle {
 component MoreMenu inherits Rectangle {
     in property <bool> removable;
 
+    callback duplicate();
+    callback clear();
     callback removed();
 
     width: 26px;
@@ -149,12 +151,10 @@ component MoreMenu inherits Rectangle {
     }
 
     list := PopupWindow {
-        // Hung from the button's trailing edge: it is the last control in
-        // the row, and a list opening rightwards would open over the lanes.
         x: 26px - self.width;
         y: 26px;
-        width: 140px;
-        height: root.row-h + 8px;
+        width: 150px;
+        height: 3 * root.row-h + 12px;
         close-policy: close-on-click-outside;
 
         Rectangle {
@@ -167,6 +167,72 @@ component MoreMenu inherits Rectangle {
             VerticalLayout {
                 padding: 4px;
                 alignment: start;
+
+                Rectangle {
+                    height: root.row-h;
+                    border-radius: Theme.r-sm;
+                    background: dup.has-hover ? Theme.field-hover : Colors.transparent;
+
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 8px;
+
+                        VerticalLayout {
+                            alignment: center;
+                            Icon { glyph: Glyph.copy; size: 13px; tint: Theme.fg; }
+                        }
+
+                        Text {
+                            horizontal-stretch: 1;
+                            text: "Duplicate Lane";
+                            color: Theme.fg;
+                            font-size: Theme.fs;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    dup := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            list.close();
+                            root.duplicate();
+                        }
+                    }
+                }
+
+                Rectangle {
+                    height: root.row-h;
+                    border-radius: Theme.r-sm;
+                    background: clr.has-hover ? Theme.field-hover : Colors.transparent;
+
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 8px;
+
+                        VerticalLayout {
+                            alignment: center;
+                            Icon { glyph: Glyph.eraser; size: 13px; tint: Theme.fg; }
+                        }
+
+                        Text {
+                            horizontal-stretch: 1;
+                            text: "Clear Clips";
+                            color: Theme.fg;
+                            font-size: Theme.fs;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    clr := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            list.close();
+                            root.clear();
+                        }
+                    }
+                }
 
                 Rectangle {
                     height: root.row-h;
@@ -217,7 +283,10 @@ component Header inherits Rectangle {
     in property <bool> removable;
 
     callback flag-changed(visible: bool, muted: bool, locked: bool);
+    callback solo-toggled();
     callback sized(size: TrackSize);
+    callback duplicate();
+    callback clear();
     callback removed();
 
     Rectangle {
@@ -304,12 +373,27 @@ component Header inherits Rectangle {
                 }
             }
 
+            VerticalLayout {
+                alignment: start;
+                IconButton {
+                    glyph: Glyph.none;
+                    text: "S";
+                    label: root.track.solo ? "Unsolo Lane" : "Solo Lane (S)";
+                    icon-size: 11px;
+                    idle: Theme.fg;
+                    checked: root.track.solo;
+                    clicked => { root.solo-toggled(); }
+                }
+            }
+
             Rectangle { horizontal-stretch: 1; }
 
             VerticalLayout {
                 alignment: start;
                 MoreMenu {
                     removable: root.removable;
+                    duplicate => { root.duplicate(); }
+                    clear => { root.clear(); }
                     removed => { root.removed(); }
                 }
             }
@@ -333,7 +417,10 @@ export component TrackHeaders inherits Rectangle {
     callback scrolled(offset: length);
 
     callback flag-changed(index: int, visible: bool, muted: bool, locked: bool);
+    callback solo-toggled(index: int);
     callback sized(index: int, size: TrackSize);
+    callback duplicate(index: int);
+    callback clear(index: int);
     callback removed(index: int);
 
     clip: true;
@@ -371,7 +458,10 @@ export component TrackHeaders inherits Rectangle {
             flag-changed(visible, muted, locked) => {
                 root.flag-changed(index, visible, muted, locked);
             }
+            solo-toggled => { root.solo-toggled(index); }
             sized(size) => { root.sized(index, size); }
+            duplicate => { root.duplicate(index); }
+            clear => { root.clear(index); }
             removed => { root.removed(index); }
         }
 

@@ -60,8 +60,11 @@ impl KurdishLanguage {
             KurdishLanguage::CentralKurdish => {
                 "Transcribe this audio/video to Central Kurdish (Sorani Kurdish, language code: ckb). Use proper Kurdish script and letters: ئ، ە، ڕ، ڵ، ڤ، ۆ، ێ، ی، و."
             }
-            KurdishLanguage::Arabic | KurdishLanguage::IraqiArabic => {
-                "Transcribe this audio/video to Arabic (including Iraqi, Levantine, Gulf, Egyptian, or Modern Standard Arabic). Use proper Arabic script."
+            KurdishLanguage::Arabic => {
+                "Transcribe this audio/video in Modern Standard Arabic (العربية الفصحى). Ensure correct Arabic spelling, proper letter forms, and clean grammar. Use standard Arabic script."
+            }
+            KurdishLanguage::IraqiArabic => {
+                "Transcribe this audio/video in Iraqi Arabic dialect (عەرەبی عێراقی / اللهجة العراقية). Accurately transcribe spoken Iraqi colloquial words and expressions in Arabic script."
             }
             KurdishLanguage::English => {
                 "Transcribe this audio/video in English. Maintain proper punctuation and capitalization."
@@ -269,9 +272,10 @@ pub fn translate_captions(
     }
 
     let target_name = match target_lang.trim() {
+        "ar" => "Modern Standard Arabic (العربية الفصحى)",
+        "ar-IQ" => "Iraqi Arabic dialect (اللهجة العراقية)",
         "ckb" => "Central Kurdish (Sorani Kurdish)",
         "en" => "English",
-        "ar" | "ar-IQ" => "Arabic",
         "fa" => "Persian (Farsi)",
         "tr" => "Turkish",
         "de" => "German",

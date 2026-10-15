@@ -64,6 +64,8 @@ export struct TrackData {
     /// nothing can be dropped onto it. A lane you can see and hear and still
     /// knock sideways by accident is the one every editor locks.
     locked: bool,
+    /// Soloed: when any lane is soloed, only soloed tracks play sound.
+    solo: bool,
 }
 
 /// A media item's filmstrip and the window of it one clip shows.

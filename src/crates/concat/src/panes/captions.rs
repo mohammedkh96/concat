@@ -39,22 +39,24 @@ pub const CHARS_PER_SECOND: f32 = 14.0;
 
 /// Spoken language choices for audio transcription.
 pub const SPOKEN_LANGUAGES: &[(&str, &str)] = &[
-    ("auto", "Auto Detect (خۆکار)"),
-    ("ckb", "Kurdish (کوردی Sorani)"),
-    ("ar", "Arabic (عەرەبی)"),
-    ("en", "English (ئینگلیزی)"),
-    ("fa", "Persian (فارسی)"),
-    ("tr", "Turkish (تورکی)"),
-    ("de", "German (ئەڵمانی)"),
-    ("fr", "French (فەرەنسی)"),
-    ("es", "Spanish (ئیسپانی)"),
+    ("auto", "Auto Detect (خۆکار / تلقائي)"),
+    ("ar", "Arabic / عەرەبی (العربية الفصحى)"),
+    ("ar-IQ", "Arabic (Iraqi) / عەرەبی عێراقی"),
+    ("ckb", "Kurdish / کوردی (Sorani)"),
+    ("en", "English / ئینگلیزی"),
+    ("fa", "Persian / فارسی"),
+    ("tr", "Turkish / تورکی"),
+    ("de", "German / ئەڵمانی"),
+    ("fr", "French / فەرەنسی"),
+    ("es", "Spanish / ئیسپانی"),
 ];
 
 /// Target language choices for subtitle translation.
 pub const TARGET_LANGUAGES: &[(&str, &str)] = &[
+    ("ar", "Arabic / عەرەبی (العربية الفصحى)"),
+    ("ar-IQ", "Arabic (Iraqi) / عەرەبی عێراقی"),
     ("ckb", "Kurdish / کوردی (Sorani)"),
     ("en", "English / ئینگلیزی"),
-    ("ar", "Arabic / عەرەبی"),
     ("fa", "Persian / فارسی"),
     ("tr", "Turkish / تورکی"),
     ("de", "German / ئەڵمانی"),
@@ -98,10 +100,14 @@ pub enum CaptionsMsg {
     AnimationChanged(i32),
     /// Highlight style: 0 Off, 1 Rounded, 2 Square, 3 Underline, 4 Highlight
     HighlightChanged(i32),
+    /// Import a UTF-8 SRT or WebVTT file at its original timeline times.
+    ImportSubtitles,
     /// Export timeline captions to SRT
     ExportSrt,
     /// Export timeline captions to ASS
     ExportAss,
+    /// Translate existing captions on timeline to target language
+    TranslateTimelineCaptions,
     /// Run the pass the sheet describes.
     Begin,
     Cancel,
@@ -243,11 +249,13 @@ impl CaptionsPane {
             CaptionsMsg::SizeChanged(index) => self.size = (index.max(0) as usize).min(2),
             CaptionsMsg::KurdishAiToggled(on) => self.is_kurdish_ai = on,
             CaptionsMsg::KurdishLanguageChanged(index) => {
-                self.kurdish_language = (index.max(0) as usize).min(SPOKEN_LANGUAGES.len().saturating_sub(1));
+                self.kurdish_language =
+                    (index.max(0) as usize).min(SPOKEN_LANGUAGES.len().saturating_sub(1));
             }
             CaptionsMsg::TranslateToggled(on) => self.translate_to_kurdish = on,
             CaptionsMsg::TargetLanguageChanged(index) => {
-                self.target_language = (index.max(0) as usize).min(TARGET_LANGUAGES.len().saturating_sub(1));
+                self.target_language =
+                    (index.max(0) as usize).min(TARGET_LANGUAGES.len().saturating_sub(1));
             }
             CaptionsMsg::AnimationChanged(index) => {
                 self.animation = (index.max(0) as usize).min(12);
@@ -255,8 +263,10 @@ impl CaptionsPane {
             CaptionsMsg::HighlightChanged(index) => {
                 self.highlight_style = (index.max(0) as usize).min(6);
             }
+            CaptionsMsg::ImportSubtitles => self.import_subtitles(studio),
             CaptionsMsg::ExportSrt => self.export_srt_captions(studio),
             CaptionsMsg::ExportAss => self.export_ass_captions(studio),
+            CaptionsMsg::TranslateTimelineCaptions => self.translate_timeline_captions(studio),
             CaptionsMsg::Begin => {
                 if self.from_voice {
                     if self.is_kurdish_ai {
@@ -410,23 +420,25 @@ impl CaptionsPane {
         };
 
         let lang = match self.kurdish_language {
-            1 => concat_speech::gemini::KurdishLanguage::CentralKurdish,
-            2 => concat_speech::gemini::KurdishLanguage::Arabic,
-            3 => concat_speech::gemini::KurdishLanguage::English,
-            4 => concat_speech::gemini::KurdishLanguage::Persian,
-            5 => concat_speech::gemini::KurdishLanguage::Turkish,
-            6 => concat_speech::gemini::KurdishLanguage::German,
-            7 => concat_speech::gemini::KurdishLanguage::French,
-            8 => concat_speech::gemini::KurdishLanguage::Spanish,
+            1 => concat_speech::gemini::KurdishLanguage::Arabic,
+            2 => concat_speech::gemini::KurdishLanguage::IraqiArabic,
+            3 => concat_speech::gemini::KurdishLanguage::CentralKurdish,
+            4 => concat_speech::gemini::KurdishLanguage::English,
+            5 => concat_speech::gemini::KurdishLanguage::Persian,
+            6 => concat_speech::gemini::KurdishLanguage::Turkish,
+            7 => concat_speech::gemini::KurdishLanguage::German,
+            8 => concat_speech::gemini::KurdishLanguage::French,
+            9 => concat_speech::gemini::KurdishLanguage::Spanish,
             _ => concat_speech::gemini::KurdishLanguage::Auto,
         };
         let translate = self.translate_to_kurdish;
         let target_lang = TARGET_LANGUAGES
             .get(self.target_language)
             .map(|(code, _)| *code)
-            .unwrap_or("ckb")
+            .unwrap_or("ar")
             .to_owned();
-        let is_target_kurdish = target_lang == "ckb";
+        let is_target_arabic_or_kurdish =
+            target_lang == "ar" || target_lang == "ar-IQ" || target_lang == "ckb";
         let custom_keys = studio.prefs.gemini_api_keys.clone();
         let model = studio.prefs.gemini_model.clone();
 
@@ -449,7 +461,11 @@ impl CaptionsPane {
             windows: 1.0,
             animation: self.animation,
             highlight_style: self.highlight_style,
-            is_kurdish: if translate { is_target_kurdish } else { self.kurdish_language <= 1 },
+            is_kurdish: if translate {
+                is_target_arabic_or_kurdish
+            } else {
+                self.kurdish_language <= 3
+            },
         });
 
         self.running = true;
@@ -573,6 +589,78 @@ impl CaptionsPane {
         );
     }
 
+    /// Pick and parse off the UI thread, then add the entire file as one edit.
+    fn import_subtitles(&mut self, studio: &Studio) {
+        if self.running || studio.session.is_none() {
+            return;
+        }
+        self.message.clear();
+        let epoch = crate::host::project_epoch();
+        let timeline = studio.timeline().id.clone();
+        let look = self.look();
+        let base = studio.prefs.title_style.clone();
+        let animation = self.animation;
+        let highlight = self.highlight_style;
+        crate::host::pick_files_then(
+            t("captions.importSubtitles"),
+            Some((t("captions.subtitleFiles"), &["srt", "vtt"])),
+            move |studio, _, _, paths| {
+                if crate::host::project_epoch() != epoch {
+                    return;
+                }
+                if paths.len() != 1 {
+                    studio.captions.message = t("captions.chooseOneSubtitle");
+                    return;
+                }
+                let path = paths[0].clone();
+                spawn_in_project(
+                    move || {
+                        let content =
+                            std::fs::read_to_string(path).map_err(|err| err.to_string())?;
+                        let cues = concat_project::subtitles::parse(&content)
+                            .map_err(|err| err.to_string())?;
+                        Ok::<_, String>(
+                            cues.into_iter()
+                                .map(|cue| {
+                                    caption_clip(
+                                        cue.text,
+                                        cue.start,
+                                        cue.end - cue.start,
+                                        look,
+                                        base.as_ref(),
+                                        animation,
+                                        highlight,
+                                        false,
+                                    )
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                    },
+                    move |studio, _, _, result| {
+                        if studio.timeline().id != timeline {
+                            studio.notify(&t("captions.importTimelineChanged"), true);
+                            return;
+                        }
+                        match result {
+                            Ok(commands) => {
+                                let count = commands.len();
+                                if studio.apply(Command::Batch { commands }).is_some() {
+                                    studio.captions.open = false;
+                                    studio.notify(&tf("captions.addedCaptions", &[&count]), false);
+                                }
+                            }
+                            Err(error) => {
+                                let message = tf("captions.importFailed", &[&error]);
+                                studio.captions.message = message.clone();
+                                studio.notify(&message, true);
+                            }
+                        }
+                    },
+                );
+            },
+        );
+    }
+
     /// Export timeline captions to an SRT file.
     fn export_srt_captions(&mut self, studio: &mut Studio) {
         let mut segments: Vec<Segment> = studio
@@ -683,12 +771,110 @@ impl CaptionsPane {
         );
     }
 
+    /// Translate all captions currently on the timeline to the selected target language.
+    fn translate_timeline_captions(&mut self, studio: &mut Studio) {
+        let targets: Vec<(String, TextStyle)> = studio
+            .timeline()
+            .clips
+            .iter()
+            .filter_map(|clip| {
+                clip.text
+                    .as_ref()
+                    .map(|text| (clip.id.clone(), text.clone()))
+            })
+            .collect();
+
+        if targets.is_empty() {
+            studio.notify("No captions on timeline to translate", true);
+            return;
+        }
+
+        let segments: Vec<Segment> = targets
+            .iter()
+            .map(|(_, text)| Segment {
+                start: 0.0,
+                end: 1.0,
+                text: text.content.clone(),
+            })
+            .collect();
+
+        let target_lang = TARGET_LANGUAGES
+            .get(self.target_language)
+            .map(|(code, _)| *code)
+            .unwrap_or("ar")
+            .to_owned();
+        let target_name = TARGET_LANGUAGES
+            .get(self.target_language)
+            .map(|(_, label)| *label)
+            .unwrap_or("Arabic")
+            .to_owned();
+        let custom_keys = studio.prefs.gemini_api_keys.clone();
+        let model = studio.prefs.gemini_model.clone();
+
+        self.running = true;
+        self.message.clear();
+        self.pace = Pace::new(vec![
+            (Stage::Loading, 0.5),
+            (Stage::Working, (segments.len() as f32 / 10.0).max(1.5)),
+        ]);
+
+        let is_rtl = target_lang == "ar"
+            || target_lang == "ar-IQ"
+            || target_lang == "ckb"
+            || target_lang == "fa";
+
+        spawn_in_project(
+            move || {
+                let translated = concat_speech::gemini::translate_captions(
+                    &segments,
+                    &target_lang,
+                    &custom_keys,
+                    model.as_deref(),
+                )?;
+                Ok((targets, translated, is_rtl, target_name))
+            },
+            |studio, _, _, result: Result<(Vec<(String, TextStyle)>, Vec<Segment>, bool, String), String>| {
+                studio.captions.running = false;
+                match result {
+                    Ok((targets, translated, is_rtl, target_name)) => {
+                        let mut commands = Vec::new();
+                        for (i, (clip_id, mut style)) in targets.into_iter().enumerate() {
+                            if let Some(trans) = translated.get(i) {
+                                style.content = trans.text.clone();
+                                if is_rtl {
+                                    style.font_family = "Rabar_021".to_owned();
+                                }
+                                commands.push(Command::UpdateClip {
+                                    clip_id,
+                                    patch: concat_project::commands::ClipPatch {
+                                        text: Some(Some(style)),
+                                        ..Default::default()
+                                    },
+                                });
+                            }
+                        }
+                        let count = commands.len();
+                        studio.apply(Command::Batch { commands });
+                        studio.notify(&format!("Translated {count} captions to {target_name}"), false);
+                    }
+                    Err(err) => {
+                        studio.captions.message = err;
+                    }
+                }
+            },
+        );
+    }
+
     /// The sheet as Slint shows it.
     pub fn data(&self, studio: &Studio) -> CaptionsSheetData {
         let source = self
             .clip
             .as_ref()
-            .and_then(|id| self.sources_cache.iter().position(|source| &source.id == id))
+            .and_then(|id| {
+                self.sources_cache
+                    .iter()
+                    .position(|source| &source.id == id)
+            })
             .map_or(-1, |index| index as i32);
         let labels: Vec<slint::SharedString> = self
             .sources_cache
@@ -1457,6 +1643,68 @@ fn wrap_caption(sentence: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::{script_captions, source_label};
+
+    #[test]
+    fn imported_captions_keep_timing_style_and_undo_together() {
+        use concat_project::{Command, Editor, subtitles};
+
+        let mut editor = Editor::new();
+        editor
+            .apply(super::caption_clip(
+                "Existing title".into(),
+                0.0,
+                10.0,
+                (0.0, 0.04),
+                None,
+                0,
+                0,
+                false,
+            ))
+            .unwrap();
+        let cues = subtitles::parse(
+            "WEBVTT\n\n00:01.125 --> 00:03.500\nسڵاو\n\n00:02.000 --> 00:02.100\nمرحبا",
+        )
+        .unwrap();
+        let commands = cues
+            .iter()
+            .map(|cue| {
+                super::caption_clip(
+                    cue.text.clone(),
+                    cue.start,
+                    cue.end - cue.start,
+                    (0.35, 0.05),
+                    None,
+                    1,
+                    1,
+                    false,
+                )
+            })
+            .collect();
+        editor.apply(Command::Batch { commands }).unwrap();
+        let clips = &editor.project().active().clips;
+        assert_eq!(clips.len(), 3);
+        for (clip, cue) in clips[1..].iter().zip(&cues) {
+            assert_eq!(clip.start, cue.start);
+            assert!((clip.duration - (cue.end - cue.start)).abs() < 1e-9);
+            assert_eq!(clip.text.as_ref().unwrap().content, cue.text);
+            assert_eq!(clip.text.as_ref().unwrap().background, "#000000bb");
+            assert!(!clip.keys.is_empty());
+            assert_eq!(clip.offset_y, 0.35);
+        }
+        assert_ne!(clips[1].track_id, clips[2].track_id);
+        assert!(editor.undo());
+        assert_eq!(editor.project().active().clips.len(), 1);
+        assert_eq!(
+            editor.project().active().clips[0]
+                .text
+                .as_ref()
+                .unwrap()
+                .content,
+            "Existing title"
+        );
+        assert!(editor.redo());
+        assert_eq!(editor.project().active().clips.len(), 3);
+    }
 
     /// A clip in the voice list is its file and where it starts, in
     /// minutes and seconds, with hours once there are any.

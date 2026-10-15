@@ -1050,5 +1050,11 @@
   "downloader.startDownload": "بدء التنزيل",
   "downloader.quickPresets": "إعدادات مسبقة سريعة ومصادر آمنة",
   "downloader.featuresTitle": "محرك تنزيل الوسائط الشامل",
-  "downloader.featuresDesc": "مدعوم بواسطة yt-dlp مع بدائل البث المباشر. يدعم 1080p، 4K، استخراج الصوت النقي والإدراج التلقائي في المخطط الزمني."
+  "downloader.featuresDesc": "مدعوم بواسطة yt-dlp مع بدائل البث المباشر. يدعم 1080p، 4K، استخراج الصوت النقي والإدراج التلقائي في المخطط الزمني.",
+  "captions.chooseOneSubtitle": "اختر ملف ترجمة واحدًا في كل مرة.",
+  "captions.importFailed": "تعذر استيراد الترجمة: {0}",
+  "captions.importHelp": "استورد ملف SRT أو WebVTT واحدًا بترميز UTF-8. تُحسب الأوقات من بداية المخطط الزمني. يُستخدم النمط المحدد أدناه دون استيراد تنسيق الملف أو مواضعه.",
+  "captions.importSubtitles": "استيراد الترجمة (SRT / VTT)",
+  "captions.importTimelineChanged": "تغير المخطط الزمني النشط. استورد الترجمة مجددًا في المخطط المطلوب.",
+  "captions.subtitleFiles": "ملفات الترجمة"
 }

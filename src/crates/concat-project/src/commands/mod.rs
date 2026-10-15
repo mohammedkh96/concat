@@ -643,6 +643,11 @@ pub enum Command {
         /// The lane to delete.
         track_id: String,
     },
+    /// Duplicates a lane and all clips on it, inserting the copy directly above.
+    DuplicateTrack {
+        /// The lane to duplicate.
+        track_id: String,
+    },
     /// Flips one of a track's two toggles. An unknown id is a no-op.
     SetTrackFlag {
         /// The lane to change.
@@ -1101,6 +1106,7 @@ pub fn apply(
         }
         command @ (Command::AddTrack { .. }
         | Command::RemoveTrack { .. }
+        | Command::DuplicateTrack { .. }
         | Command::SetTrackFlag { .. }) => tracks::apply(project, mint, command),
         command @ (Command::AddTimeline
         | Command::SetTimelineVideo { .. }

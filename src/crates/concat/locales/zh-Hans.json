@@ -1028,5 +1028,11 @@
   "tray.undo": "撤销 ({0})",
   "tray.zoomToFit": "缩放至适合",
   "voiceover.added": "旁白已添加到时间线",
-  "voiceover.failed": "无法录制：{0}"
+  "voiceover.failed": "无法录制：{0}",
+  "captions.chooseOneSubtitle": "Choose one subtitle file at a time.",
+  "captions.importFailed": "Could not import subtitles: {0}",
+  "captions.importHelp": "Import one UTF-8 SRT or WebVTT file. Times are measured from the timeline start. Captions use the style selected below; file styling and positioning are not imported.",
+  "captions.importSubtitles": "Import subtitles (SRT / VTT)",
+  "captions.importTimelineChanged": "The active timeline changed. Import the subtitles again on the intended timeline.",
+  "captions.subtitleFiles": "Subtitle files"
 }

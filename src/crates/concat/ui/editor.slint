@@ -405,6 +405,9 @@ export global Editor {
     callback drag-hovered(payload: string, seconds: float, y: length);
     callback dropped(payload: string, seconds: float, y: length);
     callback track-flag-changed(index: int, visible: bool, muted: bool, locked: bool);
+    callback track-solo(index: int);
+    callback track-duplicate(index: int);
+    callback track-clear(index: int);
     callback track-sized(index: int, size: TrackSize);
     callback track-removed(index: int);
     /// A tab dragged to a new place in the strip. `to` is counted with the

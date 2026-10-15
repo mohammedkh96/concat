@@ -74,6 +74,9 @@ export component TimelinePane inherits Rectangle {
     callback undo();
     callback redo();
     callback split();
+    callback split-all();
+    callback ripple-trim-left();
+    callback ripple-trim-right();
     callback merge();
     callback delete-selected();
     callback captions();
@@ -120,7 +123,10 @@ export component TimelinePane inherits Rectangle {
     callback drag-hovered(payload: string, seconds: float, y: length);
     callback dropped(payload: string, seconds: float, y: length);
     callback track-flag-changed(index: int, visible: bool, muted: bool, locked: bool);
+    callback track-solo(index: int);
     callback track-sized(index: int, size: TrackSize);
+    callback track-duplicate(index: int);
+    callback track-clear(index: int);
     callback track-removed(index: int);
 
     /// The corner button: show something else in this pane's seat.
@@ -349,6 +355,9 @@ export component TimelinePane inherits Rectangle {
             undo => { root.undo(); }
             redo => { root.redo(); }
             split => { root.split(); }
+            split-all => { root.split-all(); }
+            ripple-trim-left => { root.ripple-trim-left(); }
+            ripple-trim-right => { root.ripple-trim-right(); }
             merge => { root.merge(); }
             delete-selected => { root.delete-selected(); }
             captions => { root.captions(); }
@@ -385,7 +394,10 @@ export component TimelinePane inherits Rectangle {
                 flag-changed(index, visible, muted, locked) => {
                     root.track-flag-changed(index, visible, muted, locked);
                 }
+                solo-toggled(index) => { root.track-solo(index); }
                 sized(index, size) => { root.track-sized(index, size); }
+                duplicate(index) => { root.track-duplicate(index); }
+                clear(index) => { root.track-clear(index); }
                 removed(index) => { root.track-removed(index); }
             }
 

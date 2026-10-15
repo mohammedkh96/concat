@@ -199,6 +199,9 @@ export component TimelineTray inherits Rectangle {
     callback undo();
     callback redo();
     callback split();
+    callback split-all();
+    callback ripple-trim-left();
+    callback ripple-trim-right();
     callback merge();
     callback delete-selected();
     callback captions();
@@ -258,6 +261,24 @@ export component TimelineTray inherits Rectangle {
             label: I18n.t1("tray.splitAtPlayhead", @keys(Control + B).to-string());
             icon-size: 16px;
             clicked => { root.split(); }
+        }
+        TrayButton {
+            glyph: Glyph.split;
+            label: "Split All Tracks (" + @keys(Control + Shift + B).to-string() + ")";
+            icon-size: 16px;
+            clicked => { root.split-all(); }
+        }
+        TrayButton {
+            glyph: Glyph.skip-back;
+            label: "Ripple Trim Left (Q)";
+            icon-size: 14px;
+            clicked => { root.ripple-trim-left(); }
+        }
+        TrayButton {
+            glyph: Glyph.skip-forward;
+            label: "Ripple Trim Right (W)";
+            icon-size: 14px;
+            clicked => { root.ripple-trim-right(); }
         }
         // And the razor, a tool rather than a verb: on, a click on a clip
         // cuts it where the pointer is. B turns it on and off.

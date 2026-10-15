@@ -54,6 +54,36 @@ pub(super) fn apply(
             })
         }
 
+        Command::DuplicateTrack { track_id } => {
+            let timeline = project.active_mut();
+            let Some(idx) = timeline.tracks.iter().position(|t| t.id == track_id) else {
+                return Ok(Outcome::default());
+            };
+            let src = timeline.tracks[idx].clone();
+            let new_id = mint.next("t");
+            let new_track = Track {
+                id: new_id.clone(),
+                visible: src.visible,
+                muted: src.muted,
+                extra: src.extra.clone(),
+            };
+            // The stack is stored bottom first; insert directly above
+            timeline.tracks.insert(idx + 1, new_track);
+
+            let mut new_clips = Vec::new();
+            for clip in timeline.clips.iter().filter(|c| c.track_id == track_id) {
+                let mut dup = (**clip).clone();
+                dup.id = mint.next("c");
+                dup.track_id = new_id.clone();
+                new_clips.push(std::sync::Arc::new(dup));
+            }
+            timeline.clips.extend(new_clips);
+            Ok(Outcome {
+                created_id: Some(new_id),
+                applied: true,
+            })
+        }
+
         Command::SetTrackFlag {
             track_id,
             flag,

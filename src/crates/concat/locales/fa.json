@@ -1028,5 +1028,11 @@
   "tray.undo": "واگرد ({0})",
   "tray.zoomToFit": "بزرگ‌نمایی متناسب",
   "voiceover.added": "صداگذاری به خط زمانی اضافه شد",
-  "voiceover.failed": "ضبط ممکن نشد: {0}"
+  "voiceover.failed": "ضبط ممکن نشد: {0}",
+  "captions.chooseOneSubtitle": "Choose one subtitle file at a time.",
+  "captions.importFailed": "Could not import subtitles: {0}",
+  "captions.importHelp": "Import one UTF-8 SRT or WebVTT file. Times are measured from the timeline start. Captions use the style selected below; file styling and positioning are not imported.",
+  "captions.importSubtitles": "Import subtitles (SRT / VTT)",
+  "captions.importTimelineChanged": "The active timeline changed. Import the subtitles again on the intended timeline.",
+  "captions.subtitleFiles": "Subtitle files"
 }

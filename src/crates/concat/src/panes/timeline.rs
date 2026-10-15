@@ -32,6 +32,7 @@ const ZOOM_STEP: f32 = 1.4;
 #[derive(Clone, Copy)]
 pub struct LaneView {
     pub locked: bool,
+    pub solo: bool,
     pub size: TrackSize,
 }
 
@@ -39,6 +40,7 @@ impl Default for LaneView {
     fn default() -> Self {
         Self {
             locked: false,
+            solo: false,
             size: TrackSize::Auto,
         }
     }

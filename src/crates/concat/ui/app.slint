@@ -300,8 +300,10 @@ export component App inherits Window {
     callback captions-target-language-changed(index: int);
     callback captions-animation-changed(index: int);
     callback captions-highlight-changed(index: int);
+    callback captions-import-subtitles();
     callback captions-export-srt();
     callback captions-export-ass();
+    callback captions-translate-timeline();
     callback captions-begin();
     callback captions-cancel();
 
@@ -486,6 +488,11 @@ export component App inherits Window {
             activated => { Editor.shortcut("split"); }
         }
         KeyBinding {
+            keys: @keys(Control + Shift + B);
+            enabled: !root.on-start;
+            activated => { Editor.shortcut("split-all"); }
+        }
+        KeyBinding {
             keys: @keys(Control + A);
             enabled: !root.on-start;
             activated => { Editor.shortcut("select-all"); }
@@ -590,6 +597,8 @@ export component App inherits Window {
             // editor cuts with. The chord B above splits at the playhead.
             // https://github.com/jub0t/Concat/issues/241
             if (letter == "b") { Editor.shortcut("split-tool"); return accept; }
+            if (letter == "q") { Editor.shortcut("ripple-trim-left"); return accept; }
+            if (letter == "w") { Editor.shortcut("ripple-trim-right"); return accept; }
             if (letter == "n") { Editor.shortcut("snap"); return accept; }
             if (letter == "s") { Editor.shortcut("preview-axis"); return accept; }
             if (letter == "m") { Editor.shortcut("mute"); return accept; }
@@ -860,8 +869,10 @@ export component App inherits Window {
         target-language-changed(index) => { root.captions-target-language-changed(index); }
         animation-changed(index) => { root.captions-animation-changed(index); }
         highlight-changed(index) => { root.captions-highlight-changed(index); }
+        import-subtitles => { root.captions-import-subtitles(); }
         export-srt => { root.captions-export-srt(); }
         export-ass => { root.captions-export-ass(); }
+        translate-timeline => { root.captions-translate-timeline(); }
         begin => { root.captions-begin(); }
         cancel => { root.captions-cancel(); }
     }

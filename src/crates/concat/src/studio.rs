@@ -2228,6 +2228,50 @@ impl Studio {
             .is_some_and(|view| view.locked)
     }
 
+    pub fn soloed(&self, track_id: &str) -> bool {
+        self.lanes
+            .lane_view
+            .get(track_id)
+            .is_some_and(|view| view.solo)
+    }
+
+    pub fn toggle_track_solo(&mut self, row: i32) {
+        let Some(track) = self.row_track(row).cloned() else {
+            return;
+        };
+        let view = self.lanes.lane_view.entry(track.id.clone()).or_default();
+        view.solo = !view.solo;
+        self.flat = None;
+    }
+
+    pub fn duplicate_track(&mut self, row: i32) {
+        let Some(track) = self.row_track(row).cloned() else {
+            return;
+        };
+        self.apply(Command::DuplicateTrack {
+            track_id: track.id,
+        });
+    }
+
+    pub fn clear_track(&mut self, row: i32) {
+        let Some(track) = self.row_track(row).cloned() else {
+            return;
+        };
+        let doomed: Vec<String> = self
+            .timeline()
+            .clips
+            .iter()
+            .filter(|clip| clip.track_id == track.id)
+            .map(|clip| clip.id.clone())
+            .collect();
+        if !doomed.is_empty() {
+            self.apply(Command::RemoveClips {
+                clip_ids: doomed,
+                ripple: false,
+            });
+        }
+    }
+
     fn lane_size(&self, track_id: &str) -> TrackSize {
         self.lanes
             .lane_view
@@ -2613,6 +2657,16 @@ impl Studio {
                     self.title_blocks
                         .insert(title.clip_id, (title.block, title.offset));
                     clips.push(title.clip);
+                }
+            }
+            let any_solo = self.timeline().tracks.iter().any(|t| self.soloed(&t.id));
+            if any_solo {
+                for export_clip in &mut clips {
+                    if let Some(track) = self.timeline().tracks.get(export_clip.track) {
+                        if !self.soloed(&track.id) {
+                            export_clip.muted = true;
+                        }
+                    }
                 }
             }
             let clips = std::sync::Arc::new(clips);
@@ -6483,6 +6537,98 @@ impl Studio {
         }
     }
 
+    /// Split all clips across all unlocked tracks at the playhead.
+    pub fn split_all_at_playhead(&mut self) {
+        let at = f64::from(self.playhead);
+        let victims: Vec<String> = self
+            .timeline()
+            .clips
+            .iter()
+            .filter(|clip| {
+                clip.start + f64::from(MIN_DURATION) < at
+                    && at < clip.start + clip.duration - f64::from(MIN_DURATION)
+                    && !self.locked(&clip.track_id)
+            })
+            .map(|clip| clip.id.clone())
+            .collect();
+        if !victims.is_empty() {
+            self.apply(Command::SplitClips {
+                clip_ids: victims,
+                time: at,
+            });
+        }
+    }
+
+    /// Ripple Trim Left (Q): trims the head of clip(s) under playhead to playhead,
+    /// rippling remaining content left to close the gap.
+    pub fn ripple_trim_left(&mut self) {
+        let at = f64::from(self.playhead);
+        let selection = self.selection.clone();
+        let victims: Vec<(String, f64, f64)> = self
+            .timeline()
+            .clips
+            .iter()
+            .filter(|clip| {
+                clip.start + f64::from(MIN_DURATION) < at
+                    && at < clip.start + clip.duration - f64::from(MIN_DURATION)
+                    && (selection.is_empty() || selection.contains(&clip.id))
+                    && !self.locked(&clip.track_id)
+            })
+            .map(|clip| (clip.id.clone(), at - clip.start, clip.start))
+            .collect();
+
+        if victims.is_empty() {
+            return;
+        }
+        let min_start = victims.iter().map(|(_, _, s)| *s).fold(f64::INFINITY, f64::min);
+        let mut commands = Vec::new();
+        for (clip_id, delta, _) in victims {
+            commands.push(Command::TrimClip {
+                clip_id,
+                edge: concat_project::commands::TrimEdge::Start,
+                delta,
+                ripple: true,
+            });
+        }
+        self.apply(Command::Batch { commands });
+        if min_start.is_finite() {
+            self.seek(min_start as f32);
+        }
+    }
+
+    /// Ripple Trim Right (W): trims the tail of clip(s) under playhead from playhead to end,
+    /// rippling subsequent content left to close the gap.
+    pub fn ripple_trim_right(&mut self) {
+        let at = f64::from(self.playhead);
+        let selection = self.selection.clone();
+        let victims: Vec<(String, f64)> = self
+            .timeline()
+            .clips
+            .iter()
+            .filter(|clip| {
+                clip.start + f64::from(MIN_DURATION) < at
+                    && at < clip.start + clip.duration - f64::from(MIN_DURATION)
+                    && (selection.is_empty() || selection.contains(&clip.id))
+                    && !self.locked(&clip.track_id)
+            })
+            .map(|clip| (clip.id.clone(), at - (clip.start + clip.duration)))
+            .collect();
+
+        if victims.is_empty() {
+            return;
+        }
+        let mut commands = Vec::new();
+        for (clip_id, delta) in victims {
+            commands.push(Command::TrimClip {
+                clip_id,
+                edge: concat_project::commands::TrimEdge::End,
+                delta,
+                ripple: true,
+            });
+        }
+        self.apply(Command::Batch { commands });
+    }
+
     /// Save Video Frame As: the frame under the playhead, drawn at the
     /// output's full size rather than the monitor's, written as a PNG
     /// where the person says - offered in the project's frames folder -
@@ -7820,6 +7966,7 @@ impl Studio {
                         visible: lane.visible,
                         muted: lane.muted,
                         locked: self.locked(&lane.id),
+                        solo: self.soloed(&lane.id),
                         size: self.lane_size(&lane.id),
                         height,
                         top,
@@ -10291,8 +10438,13 @@ impl Studio {
         match action {
             "split" => {
                 let at = self.playhead;
-                self.split_at(at, false);
+                self.split_at(at, true);
             }
+            "split-all" => {
+                self.split_all_at_playhead();
+            }
+            "ripple-trim-left" => self.ripple_trim_left(),
+            "ripple-trim-right" => self.ripple_trim_right(),
             "split-selected" => {
                 let at = self.playhead;
                 self.split_at(at, true);

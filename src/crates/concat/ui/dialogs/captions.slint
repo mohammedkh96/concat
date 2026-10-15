@@ -8,6 +8,7 @@ import { Button, CopyChip, DialogRow, DialogSection, Modal, Progress } from "../
 import { SegmentedControl } from "../primitives/segmented-control.slint";
 import { Select } from "../primitives/select.slint";
 import { Switch } from "../inspector/controls.slint";
+import { PaneScroll } from "../workspace/pane.slint";
 
 // Captions: what the tray's Captions tool opens.
 //
@@ -90,8 +91,10 @@ export component CaptionsDialog inherits Modal {
     callback target-language-changed(index: int);
     callback animation-changed(index: int);
     callback highlight-changed(index: int);
+    callback import-subtitles();
     callback export-srt();
     callback export-ass();
+    callback translate-timeline();
     callback begin();
     callback cancel();
 
@@ -101,6 +104,7 @@ export component CaptionsDialog inherits Modal {
     title: I18n.t("captions.captions");
     glyph: Glyph.text-mark;
     surface-width: 520px;
+    surface-height: root.data.running ? 300px : 720px;
     dismissable: !root.data.running;
 
     // The script being typed, held apart from `data.text` the way the Field
@@ -118,7 +122,25 @@ export component CaptionsDialog inherits Modal {
     }
     init => { root.draft = root.data.text; }
 
-    VerticalLayout {
+    PaneScroll {
+        finger: true;
+        if !root.data.running: DialogSection {
+            first: true;
+            Button {
+                block: true;
+                label: I18n.t("captions.importSubtitles");
+                glyph: Glyph.import;
+                ghost: true;
+                clicked => { root.import-subtitles(); }
+            }
+            Text {
+                text: I18n.t("captions.importHelp");
+                color: Theme.fg-dim;
+                font-size: Theme.fs-sm;
+                wrap: word-wrap;
+            }
+        }
+
         // Prominent Mode Selector: Audio AI vs Manual Script
         if !root.data.running: HorizontalLayout {
             padding-left: 14px;
@@ -362,6 +384,16 @@ export component CaptionsDialog inherits Modal {
                 }
             }
 
+            DialogRow {
+                label: "Target Language (ترجمة)";
+                Select {
+                    options: root.data.target-languages;
+                    current: root.data.target-language;
+                    placeholder: "Arabic / عەرەبی (العربية الفصحى)";
+                    changed(index) => { root.target-language-changed(index); }
+                }
+            }
+
             HorizontalLayout {
                 spacing: 8px;
                 padding-top: 4px;
@@ -378,6 +410,13 @@ export component CaptionsDialog inherits Modal {
                     glyph: Glyph.export;
                     ghost: true;
                     clicked => { root.export-ass(); }
+                }
+
+                Button {
+                    label: "Translate Timeline (ترجمة)";
+                    glyph: Glyph.sparkle;
+                    ghost: true;
+                    clicked => { root.translate-timeline(); }
                 }
             }
 

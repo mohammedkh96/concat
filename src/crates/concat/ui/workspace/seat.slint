@@ -423,6 +423,9 @@ export component Seat inherits Rectangle {
             undo => { Editor.undo(); }
             redo => { Editor.redo(); }
             split => { Editor.split(); }
+            split-all => { Editor.shortcut("split-all"); }
+            ripple-trim-left => { Editor.shortcut("ripple-trim-left"); }
+            ripple-trim-right => { Editor.shortcut("ripple-trim-right"); }
             merge => { Editor.merge(); }
             delete-selected => { Editor.delete-selected(); }
             captions => { Editor.captions(); }
@@ -461,6 +464,9 @@ export component Seat inherits Rectangle {
             track-flag-changed(index, visible, muted, locked) => {
                 Editor.track-flag-changed(index, visible, muted, locked);
             }
+            track-solo(index) => { Editor.track-solo(index); }
+            track-duplicate(index) => { Editor.track-duplicate(index); }
+            track-clear(index) => { Editor.track-clear(index); }
             track-sized(index, size) => { Editor.track-sized(index, size); }
             track-removed(index) => { Editor.track-removed(index); }
         }
