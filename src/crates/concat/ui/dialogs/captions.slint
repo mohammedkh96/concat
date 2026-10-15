@@ -72,6 +72,9 @@ export struct CaptionsSheetData {
     target-languages: [string],
     /// Selected target language index
     target-language: int,
+    /// Modern viral caption templates (Dimension Story, Submagic, Hormozi, etc.)
+    caption-templates: [string],
+    caption-template: int,
 }
 
 export component CaptionsDialog inherits Modal {
@@ -89,6 +92,7 @@ export component CaptionsDialog inherits Modal {
     callback kurdish-language-changed(index: int);
     callback translate-toggled(on: bool);
     callback target-language-changed(index: int);
+    callback caption-template-changed(index: int);
     callback animation-changed(index: int);
     callback highlight-changed(index: int);
     callback import-subtitles();
@@ -323,6 +327,16 @@ export component CaptionsDialog inherits Modal {
 
         if !root.data.running: DialogSection {
             title: I18n.t("captions.captions");
+
+            DialogRow {
+                label: "Viral Template (قالب)";
+                Select {
+                    options: root.data.caption-templates;
+                    current: root.data.caption-template;
+                    placeholder: "✨ Dimension Story (Moonshot 3D)";
+                    changed(index) => { root.caption-template-changed(index); }
+                }
+            }
 
             DialogRow {
                 label: I18n.t("captions.placement");

@@ -71,6 +71,21 @@ pub const TARGET_LANGUAGES: &[(&str, &str)] = &[
     ("pt", "Portuguese / پورتوگالی"),
 ];
 
+/// Modern viral caption templates (Moonshot 3D, Submagic Pill, Hormozi, etc.)
+pub const CAPTION_TEMPLATES: &[(&str, &str)] = &[
+    ("default", "Standard (ستاندارد)"),
+    ("dimension-story", "✨ Dimension Story (Moonshot 3D)"),
+    ("submagic-pill", "🟢 Viral Reels Pill (سەبماجیک)"),
+    ("hormozi-gold", "⚡ Hormozi Gold (هۆرمۆزی زێڕین)"),
+    ("pink-neon", "💖 Pink Neon Glow (نیۆنی پەمەیی)"),
+    ("agent-yellow", "🎯 Agent Story (ئەیجێنت - زەرد)"),
+    ("liquid-glass-frost", "🧊 Liquid Glass Frost (شووشەی شلی نوێ)"),
+    ("obsidian-dark", "🌑 Obsidian Glass Dark (شووشەی تاریک)"),
+    ("cyberpunk-cyan", "🌐 Cyberpunk Cyan (سایبەرپانک)"),
+    ("kurdish-luxury", "👑 Kurdish Luxury Gold (کوردستانی شاهانە)"),
+    ("deep-focus", "🎬 Deep 3D Focus (فوکەسی ٣ ڕەهەندی)"),
+];
+
 /// Everything that can happen to the captions sheet.
 #[derive(Clone, Debug)]
 pub enum CaptionsMsg {
@@ -96,6 +111,8 @@ pub enum CaptionsMsg {
     TranslateToggled(bool),
     /// Target language index for translation
     TargetLanguageChanged(i32),
+    /// Modern viral caption template selection
+    TemplateChanged(i32),
     /// Animation: 0 None, 1 Fade, 2 Slide Up, 3 Slide Down, 4 Zoom In, 5 Bounce
     AnimationChanged(i32),
     /// Highlight style: 0 Off, 1 Rounded, 2 Square, 3 Underline, 4 Highlight
@@ -131,6 +148,7 @@ struct Subject {
     windows: f32,
     animation: usize,
     highlight_style: usize,
+    caption_template: usize,
     is_kurdish: bool,
 }
 
@@ -165,6 +183,8 @@ pub struct CaptionsPane {
     pub translate_to_kurdish: bool,
     /// Target language index for translation (from TARGET_LANGUAGES)
     pub target_language: usize,
+    /// Modern viral caption template selection
+    pub caption_template: usize,
     /// 0 None, 1 Fade, 2 Slide Up, 3 Slide Down, 4 Zoom In, 5 Bounce
     pub animation: usize,
     /// 0 Off, 1 Rounded, 2 Square, 3 Underline, 4 Highlight
@@ -196,6 +216,7 @@ impl Default for CaptionsPane {
             kurdish_language: 0,
             translate_to_kurdish: false,
             target_language: 0,
+            caption_template: 1,
             animation: 0,
             highlight_style: 0,
             running: false,
@@ -257,6 +278,10 @@ impl CaptionsPane {
                 self.target_language =
                     (index.max(0) as usize).min(TARGET_LANGUAGES.len().saturating_sub(1));
             }
+            CaptionsMsg::TemplateChanged(index) => {
+                self.caption_template =
+                    (index.max(0) as usize).min(CAPTION_TEMPLATES.len().saturating_sub(1));
+            }
             CaptionsMsg::AnimationChanged(index) => {
                 self.animation = (index.max(0) as usize).min(12);
             }
@@ -311,6 +336,7 @@ impl CaptionsPane {
                                         base.as_ref(),
                                         subject.animation,
                                         subject.highlight_style,
+                                        subject.caption_template,
                                         subject.is_kurdish,
                                     )
                                 })
@@ -359,6 +385,7 @@ impl CaptionsPane {
             kurdish_language: self.kurdish_language,
             translate_to_kurdish: self.translate_to_kurdish,
             target_language: self.target_language,
+            caption_template: self.caption_template,
             animation: self.animation,
             highlight_style: self.highlight_style,
             timings: std::mem::take(&mut self.timings),
@@ -396,6 +423,7 @@ impl CaptionsPane {
                     base.as_ref(),
                     self.animation,
                     self.highlight_style,
+                    self.caption_template,
                     self.is_kurdish_ai,
                 );
                 at += seconds;
@@ -461,6 +489,7 @@ impl CaptionsPane {
             windows: 1.0,
             animation: self.animation,
             highlight_style: self.highlight_style,
+            caption_template: self.caption_template,
             is_kurdish: if translate {
                 is_target_arabic_or_kurdish
             } else {
@@ -572,6 +601,7 @@ impl CaptionsPane {
             windows,
             animation: self.animation,
             highlight_style: self.highlight_style,
+            caption_template: self.caption_template,
             is_kurdish: false,
         });
         self.running = true;
@@ -601,6 +631,7 @@ impl CaptionsPane {
         let base = studio.prefs.title_style.clone();
         let animation = self.animation;
         let highlight = self.highlight_style;
+        let template = self.caption_template;
         crate::host::pick_files_then(
             t("captions.importSubtitles"),
             Some((t("captions.subtitleFiles"), &["srt", "vtt"])),
@@ -630,6 +661,7 @@ impl CaptionsPane {
                                         base.as_ref(),
                                         animation,
                                         highlight,
+                                        template,
                                         false,
                                     )
                                 })
@@ -923,6 +955,14 @@ impl CaptionsPane {
             ))
             .into(),
             target_language: self.target_language as i32,
+            caption_templates: std::rc::Rc::new(slint::VecModel::from(
+                CAPTION_TEMPLATES
+                    .iter()
+                    .map(|(_, label)| (*label).into())
+                    .collect::<Vec<slint::SharedString>>(),
+            ))
+            .into(),
+            caption_template: self.caption_template as i32,
         }
     }
 }
@@ -1447,6 +1487,7 @@ fn caption_clip(
     base: Option<&TextStyle>,
     animation: usize,
     highlight_style: usize,
+    caption_template: usize,
     is_kurdish: bool,
 ) -> Command {
     let (offset_y, font_size) = look;
@@ -1477,6 +1518,207 @@ fn caption_clip(
 
     if is_kurdish {
         style.font_family = "Rabar_021".to_owned();
+    }
+
+    let mut effective_animation = animation;
+
+    // Apply modern viral caption templates (Moonshot Dimension Story, Submagic Pill, etc.)
+    match caption_template {
+        1 => {
+            // ✨ Dimension Story (Moonshot 3D Real Estate / دایمێنشن ستۆری)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Poppins".to_owned()
+            };
+            style.font_weight = 900.0;
+            style.font_size = (font_size * 1.15).min(0.12);
+            style.color = "#ffffff".to_owned();
+            style.stroke_width = 0.005;
+            style.stroke_color = "#0a0a09".to_owned();
+            style.shadow = true;
+            style.background = "#00000055".to_owned();
+            style.background_radius = 0.02;
+            style.background_padding_x = 0.035;
+            style.background_padding_y = 0.015;
+            if effective_animation == 0 {
+                effective_animation = 8; // Bounce Pop
+            }
+        }
+        2 => {
+            // 🟢 Viral Reels Pill (Submagic / سەبماجیک)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Poppins".to_owned()
+            };
+            style.font_weight = 900.0;
+            style.font_size = (font_size * 1.1).min(0.11);
+            style.color = "#ffffff".to_owned();
+            style.stroke_width = 0.0;
+            style.shadow = true;
+            style.background = "#10b981".to_owned();
+            style.background_radius = 0.035;
+            style.background_padding_x = 0.04;
+            style.background_padding_y = 0.018;
+            if effective_animation == 0 {
+                effective_animation = 8; // Bounce Pop
+            }
+        }
+        3 => {
+            // ⚡ Hormozi Gold (هۆرمۆزی زێڕین)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Bebas Neue".to_owned()
+            };
+            style.font_weight = 900.0;
+            style.font_size = (font_size * 1.25).min(0.13);
+            style.color = "#facc15".to_owned();
+            style.stroke_width = 0.008;
+            style.stroke_color = "#000000".to_owned();
+            style.shadow = true;
+            style.background.clear();
+            if effective_animation == 0 {
+                effective_animation = 9; // Drop Stamp
+            }
+        }
+        4 => {
+            // 💖 Pink Neon Glow (نیۆنی پەمەیی)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Poppins".to_owned()
+            };
+            style.font_weight = 800.0;
+            style.color = "#ffffff".to_owned();
+            style.stroke_width = 0.006;
+            style.stroke_color = "#f43f5e".to_owned();
+            style.shadow = true;
+            style.background.clear();
+            if effective_animation == 0 {
+                effective_animation = 11; // Pulse Beat
+            }
+        }
+        5 => {
+            // 🎯 Agent Story (ئەیجێنت - زەرد)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Poppins".to_owned()
+            };
+            style.font_weight = 900.0;
+            style.font_size = (font_size * 1.1).min(0.11);
+            style.color = "#000000".to_owned();
+            style.stroke_width = 0.0;
+            style.shadow = false;
+            style.background = "#fde047".to_owned();
+            style.background_radius = 0.015;
+            style.background_padding_x = 0.03;
+            style.background_padding_y = 0.015;
+            if effective_animation == 0 {
+                effective_animation = 2; // Slide Up
+            }
+        }
+        6 => {
+            // 🧊 Liquid Glass Frost (شووشەی شلی نوێ)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Inter".to_owned()
+            };
+            style.font_weight = 700.0;
+            style.color = "#0f172a".to_owned();
+            style.stroke_width = 0.003;
+            style.stroke_color = "#ffffff".to_owned();
+            style.shadow = true;
+            style.background = "#ffffffd9".to_owned();
+            style.background_radius = 0.035;
+            style.background_padding_x = 0.04;
+            style.background_padding_y = 0.018;
+            if effective_animation == 0 {
+                effective_animation = 1; // Fade
+            }
+        }
+        7 => {
+            // 🌑 Obsidian Glass Dark (شووشەی تاریک)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Inter".to_owned()
+            };
+            style.font_weight = 700.0;
+            style.color = "#ffffff".to_owned();
+            style.stroke_width = 0.003;
+            style.stroke_color = "#38bdf888".to_owned();
+            style.shadow = true;
+            style.background = "#0f172ae6".to_owned();
+            style.background_radius = 0.035;
+            style.background_padding_x = 0.04;
+            style.background_padding_y = 0.018;
+            if effective_animation == 0 {
+                effective_animation = 2; // Slide Up
+            }
+        }
+        8 => {
+            // 🌐 Cyberpunk Cyan (سایبەرپانک)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Poppins".to_owned()
+            };
+            style.font_weight = 900.0;
+            style.color = "#22d3ee".to_owned();
+            style.stroke_width = 0.006;
+            style.stroke_color = "#0f172a".to_owned();
+            style.shadow = true;
+            style.background = "#000000bb".to_owned();
+            style.background_radius = 0.01;
+            style.background_padding_x = 0.03;
+            style.background_padding_y = 0.012;
+            if effective_animation == 0 {
+                effective_animation = 10; // Glitch Shake
+            }
+        }
+        9 => {
+            // 👑 Kurdish Luxury Gold (کوردستانی شاهانە)
+            style.font_family = "Rabar_021".to_owned();
+            style.font_weight = 800.0;
+            style.font_size = (font_size * 1.15).min(0.12);
+            style.color = "#fef08a".to_owned();
+            style.stroke_width = 0.003;
+            style.stroke_color = "#ca8a04".to_owned();
+            style.shadow = true;
+            style.background = "#1e1b4be0".to_owned();
+            style.background_radius = 0.03;
+            style.background_padding_x = 0.035;
+            style.background_padding_y = 0.015;
+            if effective_animation == 0 {
+                effective_animation = 12; // Kinetic Drift
+            }
+        }
+        10 => {
+            // 🎬 Deep 3D Focus (فوکەسی ٣ ڕەهەندی)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Bebas Neue".to_owned()
+            };
+            style.font_weight = 900.0;
+            style.font_size = (font_size * 1.2).min(0.125);
+            style.color = "#ffffff".to_owned();
+            style.stroke_width = 0.005;
+            style.stroke_color = "#0f172a".to_owned();
+            style.shadow = true;
+            style.background = "#00000066".to_owned();
+            style.background_radius = 0.02;
+            style.background_padding_x = 0.04;
+            style.background_padding_y = 0.015;
+            if effective_animation == 0 {
+                effective_animation = 8; // Bounce Pop
+            }
+        }
+        _ => {}
     }
 
     // Apply highlight styles ported from trplugin
@@ -1538,7 +1780,7 @@ fn caption_clip(
         _ => {}
     }
 
-    let keys = animation_keys(animation, offset_y);
+    let keys = animation_keys(effective_animation, offset_y);
 
     Command::AddTextClip {
         track_id: None,

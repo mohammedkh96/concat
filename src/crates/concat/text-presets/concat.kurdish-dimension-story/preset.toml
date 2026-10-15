@@ -1,0 +1,19 @@
+id = "concat.kurdish-dimension-story"
+name = "Dimension Story Kurdish"
+language = "Central Kurdish"
+order = 84
+offsetY = 0.28
+
+[style]
+content = "دایمێنشن ستۆری"
+fontFamily = "Rabar_021"
+fontWeight = 900
+fontSize = 0.082
+color = "#ffffff"
+strokeWidth = 0.005
+strokeColor = "#0a0a09"
+shadow = true
+background = "#00000055"
+backgroundRadius = 0.02
+backgroundPaddingX = 0.035
+backgroundPaddingY = 0.015
