@@ -1725,6 +1725,15 @@ fn start(project: Option<std::path::PathBuf>, smoke: bool) -> Result<(), slint::
     app.on_captions_highlight_changed(on_window!(|state, index: i32| {
         state.handle(Msg::Captions(CaptionsMsg::HighlightChanged(index)));
     }));
+    app.on_captions_gemini_model_changed(on_window!(|state, index: i32| {
+        state.handle(Msg::Captions(CaptionsMsg::GeminiModelChanged(index)));
+    }));
+    app.on_captions_login_gemini(on_window!(|state| {
+        state.handle(Msg::Captions(CaptionsMsg::LoginGemini));
+    }));
+    app.on_captions_gemini_key_edited(on_window!(|state, text: SharedString| {
+        state.handle(Msg::Captions(CaptionsMsg::GeminiKeyEdited(text.to_string())));
+    }));
     app.on_captions_import_subtitles(on_window!(|state| {
         state.handle(Msg::Captions(CaptionsMsg::ImportSubtitles));
     }));

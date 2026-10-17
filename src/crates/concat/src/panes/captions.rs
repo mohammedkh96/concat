@@ -117,6 +117,12 @@ pub enum CaptionsMsg {
     AnimationChanged(i32),
     /// Highlight style: 0 Off, 1 Rounded, 2 Square, 3 Underline, 4 Highlight
     HighlightChanged(i32),
+    /// Gemini model index changed
+    GeminiModelChanged(i32),
+    /// Open Google AI Studio in browser to sign in and get API key
+    LoginGemini,
+    /// Gemini API key edited/pasted
+    GeminiKeyEdited(String),
     /// Import a UTF-8 SRT or WebVTT file at its original timeline times.
     ImportSubtitles,
     /// Export timeline captions to SRT
@@ -287,6 +293,33 @@ impl CaptionsPane {
             }
             CaptionsMsg::HighlightChanged(index) => {
                 self.highlight_style = (index.max(0) as usize).min(6);
+            }
+            CaptionsMsg::GeminiModelChanged(index) => {
+                let models = concat_speech::gemini::AVAILABLE_GEMINI_MODELS;
+                if let Some((id, _)) = models.get(index.max(0) as usize) {
+                    studio.prefs.gemini_model = Some((*id).to_string());
+                    studio.prefs.save(&studio.host.dirs);
+                }
+            }
+            CaptionsMsg::LoginGemini => {
+                let _ = opener::open_browser("https://aistudio.google.com/app/apikey");
+                studio.notify("Google AI Studio opened in your browser. Copy your API key, then paste it below.", false);
+            }
+            CaptionsMsg::GeminiKeyEdited(text) => {
+                let clean = text.trim();
+                if clean.is_empty() {
+                    studio.prefs.gemini_api_keys.clear();
+                    studio.prefs.save(&studio.host.dirs);
+                    studio.notify("Gemini API key removed.", false);
+                } else if concat_speech::gemini::is_valid_key(clean) {
+                    studio.prefs.gemini_api_keys = vec![clean.to_string()];
+                    studio.prefs.save(&studio.host.dirs);
+                    studio.notify("✅ Gemini API key connected successfully!", false);
+                    self.message.clear();
+                } else {
+                    self.message = "⚠️ Invalid or leaked API key. Please generate a fresh key from Google AI Studio.".to_string();
+                    studio.notify(&self.message, true);
+                }
             }
             CaptionsMsg::ImportSubtitles => self.import_subtitles(studio),
             CaptionsMsg::ExportSrt => self.export_srt_captions(studio),
@@ -485,7 +518,9 @@ impl CaptionsPane {
             start: clip.start,
             speed: clip.speed,
             look: self.look(),
-            model: "gemini-2.5-flash".to_owned(),
+            model: model
+                .clone()
+                .unwrap_or_else(|| concat_speech::gemini::DEFAULT_GEMINI_MODEL.to_owned()),
             windows: 1.0,
             animation: self.animation,
             highlight_style: self.highlight_style,
@@ -913,6 +948,31 @@ impl CaptionsPane {
             .iter()
             .map(|source| source.label.as_str().into())
             .collect();
+
+        let available_models = concat_speech::gemini::AVAILABLE_GEMINI_MODELS;
+        let current_model_id = studio
+            .prefs
+            .gemini_model
+            .as_deref()
+            .unwrap_or(concat_speech::gemini::DEFAULT_GEMINI_MODEL);
+        let gemini_model_index = available_models
+            .iter()
+            .position(|(id, _)| *id == current_model_id)
+            .unwrap_or(0) as i32;
+
+        let clean_keys = concat_speech::gemini::clean_api_keys(&studio.prefs.gemini_api_keys);
+        let has_gemini_key = !clean_keys.is_empty();
+        let gemini_key_preview = clean_keys
+            .first()
+            .map(|k| {
+                if k.len() > 10 {
+                    format!("{}...{}", &k[..6], &k[k.len() - 4..])
+                } else {
+                    "Connected".to_string()
+                }
+            })
+            .unwrap_or_default();
+
         CaptionsSheetData {
             open: self.open,
             from_voice: self.from_voice,
@@ -963,6 +1023,16 @@ impl CaptionsPane {
             ))
             .into(),
             caption_template: self.caption_template as i32,
+            gemini_models: std::rc::Rc::new(slint::VecModel::from(
+                available_models
+                    .iter()
+                    .map(|(_, name)| (*name).into())
+                    .collect::<Vec<slint::SharedString>>(),
+            ))
+            .into(),
+            gemini_model: gemini_model_index,
+            has_gemini_key,
+            gemini_key_preview: gemini_key_preview.into(),
         }
     }
 }

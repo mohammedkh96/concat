@@ -301,6 +301,9 @@ export component App inherits Window {
     callback captions-caption-template-changed(index: int);
     callback captions-animation-changed(index: int);
     callback captions-highlight-changed(index: int);
+    callback captions-gemini-model-changed(index: int);
+    callback captions-login-gemini();
+    callback captions-gemini-key-edited(text: string);
     callback captions-import-subtitles();
     callback captions-export-srt();
     callback captions-export-ass();
@@ -871,6 +874,9 @@ export component App inherits Window {
         caption-template-changed(index) => { root.captions-caption-template-changed(index); }
         animation-changed(index) => { root.captions-animation-changed(index); }
         highlight-changed(index) => { root.captions-highlight-changed(index); }
+        gemini-model-changed(index) => { root.captions-gemini-model-changed(index); }
+        login-gemini => { root.captions-login-gemini(); }
+        gemini-key-edited(text) => { root.captions-gemini-key-edited(text); }
         import-subtitles => { root.captions-import-subtitles(); }
         export-srt => { root.captions-export-srt(); }
         export-ass => { root.captions-export-ass(); }

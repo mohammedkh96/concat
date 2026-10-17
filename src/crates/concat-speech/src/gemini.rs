@@ -13,15 +13,50 @@ use serde::{Deserialize, Serialize};
 use crate::transcribe::Segment;
 use crate::JobStage;
 
-/// Default API keys with automatic failover rotation from trplugin.
-pub const DEFAULT_GEMINI_KEYS: &[&str] = &[
+/// Revoked/leaked API keys permanently blocked by Google AI Studio.
+pub const REVOKED_LEAKED_KEYS: &[&str] = &[
     "AIzaSyDa0ievh4bRuaXlEMGFMRsb8nGz2MHlrR8",
     "AIzaSyAZT5M9uvD30XHtIqGzb6lLGGZefBU4aws",
     "AIzaSyCpL8ZoOMYiN9mxmaBfTiOsbIay5efKGYQ",
 ];
 
+/// Default fallback API keys (empty because default keys were revoked by Google).
+pub const DEFAULT_GEMINI_KEYS: &[&str] = &[];
+
 /// The default Gemini model used for Kurdish transcription & translation.
-pub const DEFAULT_GEMINI_MODEL: &str = "gemini-2.5-flash";
+pub const DEFAULT_GEMINI_MODEL: &str = "gemini-2.0-flash";
+
+/// Available Gemini models
+pub const AVAILABLE_GEMINI_MODELS: &[(&str, &str)] = &[
+    ("gemini-2.0-flash", "Gemini 2.0 Flash (Recommended - Fast)"),
+    ("gemini-2.0-flash-lite", "Gemini 2.0 Flash Lite (Cost-efficient)"),
+    ("gemini-1.5-flash", "Gemini 1.5 Flash (Fast & Stable)"),
+    ("gemini-1.5-pro", "Gemini 1.5 Pro (High Accuracy)"),
+];
+
+/// Checks if an API key is non-empty, sufficiently long, and not in the revoked leaked list.
+pub fn is_valid_key(key: &str) -> bool {
+    let clean = key.trim();
+    clean.len() >= 20 && !REVOKED_LEAKED_KEYS.contains(&clean)
+}
+
+/// Filter and collect clean API keys.
+pub fn clean_api_keys(custom_keys: &[String]) -> Vec<String> {
+    let mut valid = Vec::new();
+    for k in custom_keys {
+        let clean = k.trim();
+        if is_valid_key(clean) && !valid.contains(&clean.to_string()) {
+            valid.push(clean.to_string());
+        }
+    }
+    for k in DEFAULT_GEMINI_KEYS {
+        let clean = k.trim();
+        if is_valid_key(clean) && !valid.contains(&clean.to_string()) {
+            valid.push(clean.to_string());
+        }
+    }
+    valid
+}
 
 /// Supported transcription languages for AI transcription.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -198,12 +233,9 @@ Return ONLY the transcription with timestamps. No explanations or extra text."
     progress(JobStage::Loading);
     let chosen_model = model.unwrap_or(DEFAULT_GEMINI_MODEL);
 
-    // Merge custom keys and fallback keys
-    let mut keys: Vec<String> = custom_keys.iter().cloned().collect();
-    for k in DEFAULT_GEMINI_KEYS {
-        if !keys.iter().any(|existing| existing == *k) {
-            keys.push((*k).to_string());
-        }
+    let keys = clean_api_keys(custom_keys);
+    if keys.is_empty() {
+        return Err("هیچ کلیلی API ـی بەردەست نییە یان کلیلەکەت بلۆک کراوە. تکایە لە Captions کلیک لە '🔑 Login & Get Key' بکە بۆ هێنانی کلیل لە Google AI Studio (No valid Gemini API key found. Please connect your API key via Google AI Studio).".to_owned());
     }
 
     let mut last_error = String::new();
@@ -245,11 +277,23 @@ Return ONLY the transcription with timestamps. No explanations or extra text."
                     }
                     last_error = format!("invalid candidate response from API: {text}");
                 } else {
-                    last_error = format!("HTTP {status} using key {}", idx + 1);
+                    let err_body = res.into_string().unwrap_or_default();
+                    if err_body.to_lowercase().contains("leaked") || err_body.to_lowercase().contains("permission_denied") {
+                        last_error = "کلیلی API لەلایەن گووگڵ بلۆک کراوە (leaked). تکایە کلیلێکی نوێ لە Google AI Studio بەدەستبهێنە.".to_owned();
+                    } else if status == 404 || err_body.to_lowercase().contains("not found") || err_body.to_lowercase().contains("is not supported") {
+                        last_error = format!("Model '{chosen_model}' is not supported. Please choose gemini-2.0-flash ({err_body})");
+                    } else {
+                        last_error = format!("HTTP {status} using key {}: {err_body}", idx + 1);
+                    }
                 }
             }
             Err(e) => {
-                last_error = format!("request failed with key {}: {e}", idx + 1);
+                let err_str = e.to_string();
+                if err_str.to_lowercase().contains("leaked") || err_str.to_lowercase().contains("permission_denied") {
+                    last_error = "کلیلی API لەلایەن گووگڵ بلۆک کراوە (leaked). تکایە کلیلێکی نوێ لە Google AI Studio بەدەستبهێنە.".to_owned();
+                } else {
+                    last_error = format!("request failed with key {}: {err_str}", idx + 1);
+                }
             }
         }
     }
@@ -291,11 +335,9 @@ pub fn translate_captions(
         other => other,
     };
 
-    let mut keys: Vec<String> = custom_keys.iter().cloned().collect();
-    for k in DEFAULT_GEMINI_KEYS {
-        if !keys.iter().any(|existing| existing == *k) {
-            keys.push((*k).to_string());
-        }
+    let keys = clean_api_keys(custom_keys);
+    if keys.is_empty() {
+        return Err("هیچ کلیلی API ـی بەردەست نییە یان کلیلەکەت بلۆک کراوە. تکایە لە Captions کلیک لە '🔑 Login & Get Key' بکە بۆ هێنانی کلیل لە Google AI Studio (No valid Gemini API key found. Please connect your API key via Google AI Studio).".to_owned());
     }
     let chosen_model = model.unwrap_or(DEFAULT_GEMINI_MODEL);
 
@@ -407,10 +449,23 @@ OUTPUT (return exactly {count} lines):"
                 }
             }
             Ok(res) => {
-                last_error = format!("HTTP {} with key {}", res.status(), idx + 1);
+                let status = res.status();
+                let err_body = res.into_string().unwrap_or_default();
+                if err_body.to_lowercase().contains("leaked") || err_body.to_lowercase().contains("permission_denied") {
+                    last_error = "کلیلی API لەلایەن گووگڵ بلۆک کراوە (leaked). تکایە کلیلێکی نوێ لە Google AI Studio بەدەستبهێنە.".to_owned();
+                } else if status == 404 || err_body.to_lowercase().contains("not found") || err_body.to_lowercase().contains("is not supported") {
+                    last_error = format!("Model '{chosen_model}' is not supported. Please choose gemini-2.0-flash ({err_body})");
+                } else {
+                    last_error = format!("HTTP {status} with key {}: {err_body}", idx + 1);
+                }
             }
             Err(e) => {
-                last_error = format!("Key {} failed: {e}", idx + 1);
+                let err_str = e.to_string();
+                if err_str.to_lowercase().contains("leaked") || err_str.to_lowercase().contains("permission_denied") {
+                    last_error = "کلیلی API لەلایەن گووگڵ بلۆک کراوە (leaked). تکایە کلیلێکی نوێ لە Google AI Studio بەدەستبهێنە.".to_owned();
+                } else {
+                    last_error = format!("Key {} failed: {err_str}", idx + 1);
+                }
             }
         }
     }

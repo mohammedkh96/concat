@@ -4,7 +4,7 @@
 import { I18n } from "../i18n.slint";
 import { Theme } from "../theme/theme.slint";
 import { Glyph, Icon } from "../icons.slint";
-import { Button, CopyChip, DialogRow, DialogSection, Modal, Progress } from "../primitives/modal.slint";
+import { Button, CopyChip, DialogRow, DialogSection, Field, Modal, Progress } from "../primitives/modal.slint";
 import { SegmentedControl } from "../primitives/segmented-control.slint";
 import { Select } from "../primitives/select.slint";
 import { Switch } from "../inspector/controls.slint";
@@ -75,6 +75,12 @@ export struct CaptionsSheetData {
     /// Modern viral caption templates (Dimension Story, Submagic, Hormozi, etc.)
     caption-templates: [string],
     caption-template: int,
+    /// Gemini model options
+    gemini-models: [string],
+    gemini-model: int,
+    /// Whether custom Gemini API key is configured
+    has-gemini-key: bool,
+    gemini-key-preview: string,
 }
 
 export component CaptionsDialog inherits Modal {
@@ -95,6 +101,9 @@ export component CaptionsDialog inherits Modal {
     callback caption-template-changed(index: int);
     callback animation-changed(index: int);
     callback highlight-changed(index: int);
+    callback gemini-model-changed(index: int);
+    callback login-gemini();
+    callback gemini-key-edited(text: string);
     callback import-subtitles();
     callback export-srt();
     callback export-ass();
@@ -210,6 +219,47 @@ export component CaptionsDialog inherits Modal {
                     options: ["Kurdish AI (Gemini)", "Local Whisper"];
                     current: root.data.is-kurdish-ai ? 0 : 1;
                     changed(index) => { root.kurdish-ai-toggled(index == 0); }
+                }
+            }
+
+            if root.data.is-kurdish-ai: DialogRow {
+                label: "Gemini Model";
+                Select {
+                    options: root.data.gemini-models;
+                    current: root.data.gemini-model;
+                    placeholder: "Gemini 2.0 Flash (Recommended)";
+                    changed(index) => { root.gemini-model-changed(index); }
+                }
+            }
+
+            if root.data.is-kurdish-ai: DialogRow {
+                label: "Gemini API";
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: end;
+
+                    Text {
+                        text: root.data.has-gemini-key ? ("🟢 " + root.data.gemini-key-preview) : "🔴 Not Connected";
+                        color: root.data.has-gemini-key ? Theme.accent : Theme.fg-muted;
+                        font-size: Theme.fs-sm;
+                        vertical-alignment: center;
+                    }
+
+                    Button {
+                        label: "🔑 Login & Get Key";
+                        primary: !root.data.has-gemini-key;
+                        clicked => { root.login-gemini(); }
+                    }
+                }
+            }
+
+            if root.data.is-kurdish-ai: DialogRow {
+                label: "API Key";
+                Field {
+                    placeholder: "Paste Gemini API Key (AIzaSy...)";
+                    secret: true;
+                    value: root.data.has-gemini-key ? "••••••••••••••••••••" : "";
+                    edited(text) => { root.gemini-key-edited(text); }
                 }
             }
 
