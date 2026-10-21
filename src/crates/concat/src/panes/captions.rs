@@ -71,7 +71,7 @@ pub const TARGET_LANGUAGES: &[(&str, &str)] = &[
     ("pt", "Portuguese / پورتوگالی"),
 ];
 
-/// Modern viral caption templates (Moonshot 3D, Submagic Pill, Hormozi, etc.)
+/// Modern viral caption templates (Moonshot 3D, Submagic Pill, Hormozi, MrBeast, etc.)
 pub const CAPTION_TEMPLATES: &[(&str, &str)] = &[
     ("default", "Standard (ستاندارد)"),
     ("dimension-story", "✨ Dimension Story (Moonshot 3D)"),
@@ -84,6 +84,12 @@ pub const CAPTION_TEMPLATES: &[(&str, &str)] = &[
     ("cyberpunk-cyan", "🌐 Cyberpunk Cyan (سایبەرپانک)"),
     ("kurdish-luxury", "👑 Kurdish Luxury Gold (کوردستانی شاهانە)"),
     ("deep-focus", "🎬 Deep 3D Focus (فوکەسی ٣ ڕەهەندی)"),
+    ("mrbeast-thunder", "⚡ MrBeast Thunder (مستەربست)"),
+    ("netflix-cinematic", "🍿 Netflix Cinematic (نێتفلیکس)"),
+    ("ali-abdaal-notion", "📝 Notion Minimalist (نۆشن)"),
+    ("emerald-bouncy", "💎 Emerald Bouncy (زمڕووتی بەهار)"),
+    ("kurdish-box", "🟨 Kurdish Golden Box (بۆکسی زێڕین)"),
+    ("fire-red", "🔥 Fire Red Punch (سووری گڕگرتوو)"),
 ];
 
 /// Everything that can happen to the captions sheet.
@@ -287,12 +293,18 @@ impl CaptionsPane {
             CaptionsMsg::TemplateChanged(index) => {
                 self.caption_template =
                     (index.max(0) as usize).min(CAPTION_TEMPLATES.len().saturating_sub(1));
+                studio.prefs.caption_template = Some(self.caption_template);
+                studio.prefs.save(&studio.host.dirs);
             }
             CaptionsMsg::AnimationChanged(index) => {
                 self.animation = (index.max(0) as usize).min(12);
+                studio.prefs.caption_animation = Some(self.animation);
+                studio.prefs.save(&studio.host.dirs);
             }
             CaptionsMsg::HighlightChanged(index) => {
                 self.highlight_style = (index.max(0) as usize).min(6);
+                studio.prefs.caption_highlight = Some(self.highlight_style);
+                studio.prefs.save(&studio.host.dirs);
             }
             CaptionsMsg::GeminiModelChanged(index) => {
                 let models = concat_speech::gemini::AVAILABLE_GEMINI_MODELS;
@@ -418,9 +430,9 @@ impl CaptionsPane {
             kurdish_language: self.kurdish_language,
             translate_to_kurdish: self.translate_to_kurdish,
             target_language: self.target_language,
-            caption_template: self.caption_template,
-            animation: self.animation,
-            highlight_style: self.highlight_style,
+            caption_template: studio.prefs.caption_template.unwrap_or(self.caption_template),
+            animation: studio.prefs.caption_animation.unwrap_or(self.animation),
+            highlight_style: studio.prefs.caption_highlight.unwrap_or(self.highlight_style),
             timings: std::mem::take(&mut self.timings),
             sources_cache: sources,
             ..CaptionsPane::default()
@@ -1033,6 +1045,13 @@ impl CaptionsPane {
             gemini_model: gemini_model_index,
             has_gemini_key,
             gemini_key_preview: gemini_key_preview.into(),
+            gemini_key: studio
+                .prefs
+                .gemini_api_keys
+                .first()
+                .cloned()
+                .unwrap_or_default()
+                .into(),
         }
     }
 }
@@ -1561,6 +1580,14 @@ fn caption_clip(
     is_kurdish: bool,
 ) -> Command {
     let (offset_y, font_size) = look;
+    let is_kurdish = is_kurdish
+        || text.chars().any(|c| {
+            ('\u{0600}'..='\u{06FF}').contains(&c)
+                || ('\u{0750}'..='\u{077F}').contains(&c)
+                || ('\u{08A0}'..='\u{08FF}').contains(&c)
+                || ('\u{FB50}'..='\u{FDFF}').contains(&c)
+                || ('\u{FE70}'..='\u{FEFF}').contains(&c)
+        });
     let mut style = match base {
         Some(base) => TextStyle {
             content: text,
@@ -1786,6 +1813,126 @@ fn caption_clip(
             style.background_padding_y = 0.015;
             if effective_animation == 0 {
                 effective_animation = 8; // Bounce Pop
+            }
+        }
+        11 => {
+            // ⚡ MrBeast Thunder (مستەربست)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Montserrat".to_owned()
+            };
+            style.font_weight = 900.0;
+            style.font_size = (font_size * 1.25).min(0.13);
+            style.color = "#00f2fe".to_owned();
+            style.stroke_width = 0.010;
+            style.stroke_color = "#000000".to_owned();
+            style.shadow = true;
+            style.background = "#000000".to_owned();
+            style.background_radius = 0.02;
+            style.background_padding_x = 0.035;
+            style.background_padding_y = 0.015;
+            if effective_animation == 0 {
+                effective_animation = 9; // Drop Stamp
+            }
+        }
+        12 => {
+            // 🍿 Netflix Cinematic (نێتفلیکس)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Hanken Grotesk".to_owned()
+            };
+            style.font_weight = 600.0;
+            style.font_size = (font_size * 0.95).max(0.045);
+            style.color = "#fef3c7".to_owned();
+            style.stroke_width = 0.003;
+            style.stroke_color = "#000000".to_owned();
+            style.shadow = true;
+            style.background = "#000000aa".to_owned();
+            style.background_radius = 0.008;
+            style.background_padding_x = 0.048;
+            style.background_padding_y = 0.02;
+            if effective_animation == 0 {
+                effective_animation = 1; // Fade
+            }
+        }
+        13 => {
+            // 📝 Notion Minimalist (نۆشن)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Inter".to_owned()
+            };
+            style.font_weight = 700.0;
+            style.font_size = font_size;
+            style.color = "#18181b".to_owned();
+            style.stroke_width = 0.0;
+            style.shadow = false;
+            style.background = "#f4f4f5f5".to_owned();
+            style.background_radius = 0.016;
+            style.background_padding_x = 0.04;
+            style.background_padding_y = 0.016;
+            if effective_animation == 0 {
+                effective_animation = 2; // Slide Up
+            }
+        }
+        14 => {
+            // 💎 Emerald Bouncy (زمڕووتی بەهار)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Montserrat".to_owned()
+            };
+            style.font_weight = 900.0;
+            style.font_size = (font_size * 1.1).min(0.115);
+            style.color = "#ffffff".to_owned();
+            style.stroke_width = 0.004;
+            style.stroke_color = "#047857".to_owned();
+            style.shadow = true;
+            style.background = "#059669".to_owned();
+            style.background_radius = 0.03;
+            style.background_padding_x = 0.04;
+            style.background_padding_y = 0.018;
+            if effective_animation == 0 {
+                effective_animation = 8; // Bounce Pop
+            }
+        }
+        15 => {
+            // 🟨 Kurdish Golden Box (بۆکسی زێڕین)
+            style.font_family = "Rabar_021".to_owned();
+            style.font_weight = 900.0;
+            style.font_size = (font_size * 1.15).min(0.12);
+            style.color = "#000000".to_owned();
+            style.stroke_width = 0.0;
+            style.shadow = false;
+            style.background = "#facc15".to_owned();
+            style.background_radius = 0.0;
+            style.background_padding_x = 0.035;
+            style.background_padding_y = 0.015;
+            if effective_animation == 0 {
+                effective_animation = 2; // Slide Up
+            }
+        }
+        16 => {
+            // 🔥 Fire Red Punch (سووری گڕگرتوو)
+            style.font_family = if is_kurdish {
+                "Rabar_021".to_owned()
+            } else {
+                "Montserrat".to_owned()
+            };
+            style.font_weight = 900.0;
+            style.font_size = (font_size * 1.2).min(0.125);
+            style.color = "#ffffff".to_owned();
+            style.stroke_width = 0.005;
+            style.stroke_color = "#7f1d1d".to_owned();
+            style.shadow = true;
+            style.background = "#dc2626".to_owned();
+            style.background_radius = 0.025;
+            style.background_padding_x = 0.04;
+            style.background_padding_y = 0.016;
+            if effective_animation == 0 {
+                effective_animation = 9; // Drop Stamp
             }
         }
         _ => {}

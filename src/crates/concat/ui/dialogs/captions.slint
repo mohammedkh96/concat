@@ -81,12 +81,15 @@ export struct CaptionsSheetData {
     /// Whether custom Gemini API key is configured
     has-gemini-key: bool,
     gemini-key-preview: string,
+    gemini-key: string,
 }
 
 export component CaptionsDialog inherits Modal {
     in property <CaptionsSheetData> data;
     /// The installed transcriber models, by name.
     in property <[string]> models;
+
+    property <bool> show-key: false;
 
     callback voice-toggled(on: bool);
     callback source-changed(index: int);
@@ -255,11 +258,20 @@ export component CaptionsDialog inherits Modal {
 
             if root.data.is-kurdish-ai: DialogRow {
                 label: "API Key";
-                Field {
-                    placeholder: "Paste Gemini API Key (AIzaSy...)";
-                    secret: true;
-                    value: root.data.has-gemini-key ? "••••••••••••••••••••" : "";
-                    edited(text) => { root.gemini-key-edited(text); }
+                HorizontalLayout {
+                    spacing: 6px;
+                    Field {
+                        placeholder: "Paste Gemini API Key (AIzaSy...)";
+                        secret: !root.show-key;
+                        value: root.data.gemini-key;
+                        technical: true;
+                        edited(text) => { root.gemini-key-edited(text); }
+                    }
+                    Button {
+                        square: true;
+                        glyph: root.show-key ? Glyph.eye-off : Glyph.eye;
+                        clicked => { root.show-key = !root.show-key; }
+                    }
                 }
             }
 

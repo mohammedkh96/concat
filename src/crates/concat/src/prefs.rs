@@ -46,6 +46,12 @@ pub struct Preferences {
     pub gemini_api_keys: Vec<String>,
     /// Selected Gemini model for transcription.
     pub gemini_model: Option<String>,
+    /// Selected caption template
+    pub caption_template: Option<usize>,
+    /// Selected caption animation
+    pub caption_animation: Option<usize>,
+    /// Selected caption highlight style
+    pub caption_highlight: Option<usize>,
     /// The chosen speech model id.
     pub tts_model: Option<String>,
     /// The chosen Kokoro speaker id.
